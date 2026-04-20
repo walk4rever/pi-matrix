@@ -1,11 +1,15 @@
 FROM python:3.12-slim
 
-ARG HERMES_VERSION
-RUN test -n "$HERMES_VERSION" || (echo "HERMES_VERSION required" && exit 1)
-
 RUN pip install --no-cache-dir \
-    "hermes-agent==${HERMES_VERSION}"
+    "hermes-agent" \
+    "fastapi>=0.111.0" \
+    "uvicorn[standard]>=0.29.0" \
+    "httpx>=0.27.0"
 
-COPY ../config-template/hermes-config.yaml /etc/pi-matrix/hermes-config.yaml
+WORKDIR /app
+COPY inbox.py .
 
-CMD ["hermes", "--config", "/etc/pi-matrix/hermes-config.yaml"]
+ENV HERMES_MODEL=anthropic/claude-haiku-4-5
+ENV ROUTER_REPLY_URL=""
+
+CMD ["uvicorn", "inbox:app", "--host", "0.0.0.0", "--port", "8080"]
