@@ -30,6 +30,20 @@
 - **飞书**（MVP 首选，API 完善，开发友好）
 - **企业微信**（后续接入）
 
+### 飞书 Bot 接入策略
+
+我们统一建一个 Bot，用户无需接触飞书开放平台。
+
+| 阶段 | 方式 | 说明 |
+|---|---|---|
+| MVP | 飞书自建应用 | 快速验证，用于种子用户测试 |
+| 商业化 | 飞书 ISV 应用市场 | 任何用户/企业可授权，标准 SaaS 模式 |
+| 海外 | Lark 国际版 | 独立平台，后续申请 |
+
+**ISV 申请条件**：公司主体已注册（已具备），需提交营业执照 + 隐私政策 + 用户协议，审核约 1-4 周。MVP 阶段同步准备材料，不阻塞开发。
+
+**用户身份绑定**：用户飞书 `open_id` 在注册时绑定到 pi-matrix 账号，后续所有消息按此路由。
+
 ### 数据归属原则
 
 - 用户数据完全属于用户
@@ -42,24 +56,27 @@
 
 ```
 [用户]
-  └── 飞书 / 微信 发消息
+  └── 飞书发消息
 
-        ↕ Bot API
-
-[Agent 实例]  ← Mac mini 本地 或 我们的云容器
-  └── hermes-agent（versioned dependency，非 fork）
-  └── IM Bot Connector（hermes gateway 模块）
-  └── 本地数据
-
-        ↕ HTTPS
+        ↓ webhook（飞书回调我们的云端）
 
 [云端平台]
+  └── Router           — 接收飞书 webhook，按 open_id 识别用户，路由消息
   └── API（FastAPI）    — 设备注册、配置同步、记忆存储
   └── LLM Gateway      — 模型路由、用量计量（LiteLLM）
   └── Orchestrator     — 云端版实例生命周期管理
   └── Dashboard        — 用户 Web 控制台（Next.js）
   └── 数据库            — Supabase（PostgreSQL + RLS 多租户隔离）
+
+        ↓ 消息投递
+
+[Agent 实例]
+  ├── 云端版：用户独立容器，直接接收
+  └── Mac mini 版：设备与云端保持长连接，云端推送消息到本地 hermes
+        └── hermes-agent（versioned dependency，非 fork）
 ```
+
+**关键设计**：Mac mini 在用户本地网络（NAT 后），无法直接接收 webhook。所有消息统一经过云端 Router，Mac mini 主动与云端维持长连接接收推送。两个 SKU 的消息路径对用户完全透明。
 
 ---
 
@@ -91,6 +108,7 @@ agent/                   # hermes 实例运行相关
 
 cloud/                   # 云端平台
   api/                   # FastAPI 主服务
+  router/                # 飞书 webhook 接收 + 消息路由（核心枢纽）
   gateway/               # LiteLLM 配置
   orchestrator/          # 云端实例生命周期管理
   dashboard/             # Next.js 用户控制台
@@ -115,12 +133,15 @@ cloud/                   # 云端平台
 
 验证基本链路可行：
 
-- [ ] 飞书 Bot 与 hermes-agent 集成，消息收发端到端跑通
+- [ ] 飞书自建应用创建，获取 App ID / App Secret / Verification Token
+- [ ] `cloud/router/` 实现飞书 webhook 接收 + 签名验证
+- [ ] hermes-agent 本地安装，配置飞书接入参数
+- [ ] Router 将消息投递到本地 hermes，hermes 回复经 Router 发回飞书
 - [ ] Supabase 项目创建，跑 001 migration
-- [ ] FastAPI 本地启动，设备注册 + 心跳接口验证
-- [ ] 设备能从云端拉取配置（`GET /config/device`）
+- [ ] FastAPI 设备注册 + 心跳接口本地验证
+- [ ] 用户 open_id 绑定到 pi-matrix 账号
 
-**交付标准**：本地 Mac mini 上 hermes 启动，飞书发消息能收到回复。
+**交付标准**：本地 hermes 启动，飞书发消息能收到回复，消息经过云端 Router 路由。
 
 ### Phase 2 — 云端 SKU 可交付（目标 3-4 周）
 
