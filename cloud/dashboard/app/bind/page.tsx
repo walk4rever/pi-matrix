@@ -32,7 +32,8 @@ function BindForm() {
       return;
     }
 
-    const res = await fetch("/pm/api/feishu/bind", {
+    const apiBase = process.env.NEXT_PUBLIC_API_URL ?? "/pm/api";
+    const res = await fetch(`${apiBase}/feishu/bind`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

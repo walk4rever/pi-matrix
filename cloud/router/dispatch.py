@@ -48,5 +48,5 @@ async def _deliver(endpoint: str, open_id: str, text: str) -> None:
 async def _handle_unbound(open_id: str, text: str) -> None:
     await send_message(
         open_id,
-        f"欢迎使用 pi-matrix！点击注册您的数字员工：https://air7.fun/register?open_id={open_id}"
+        f"欢迎使用 pi-matrix！点击注册您的数字员工：{settings.dashboard_url}/register?open_id={open_id}"
     )

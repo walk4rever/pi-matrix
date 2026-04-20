@@ -9,6 +9,7 @@ class Settings(BaseSettings):
 
     supabase_url: str
     supabase_service_key: str
+    dashboard_url: str = "https://pi-matrix.vercel.app"
 
     class Config:
         env_file = ".env"
