@@ -1,44 +1,41 @@
 """
-Feishu webhook verification and API helpers.
+Feishu client: long connection event listener + message sending.
 """
-import hashlib
-import hmac
 import httpx
+import lark_oapi as lark
+from lark_oapi.api.im.v1 import CreateMessageRequest, CreateMessageRequestBody
 from config import settings
 
-FEISHU_API = "https://open.feishu.cn/open-apis"
-
-_tenant_token: str | None = None
-
-
-async def get_tenant_token() -> str:
-    global _tenant_token
-    async with httpx.AsyncClient() as client:
-        resp = await client.post(
-            f"{FEISHU_API}/auth/v3/tenant_access_token/internal",
-            json={
-                "app_id": settings.feishu_app_id,
-                "app_secret": settings.feishu_app_secret,
-            },
-        )
-        resp.raise_for_status()
-        _tenant_token = resp.json()["tenant_access_token"]
-    return _tenant_token
-
-
-def verify_token(token: str) -> bool:
-    return token == settings.feishu_verification_token
+client = lark.Client.builder() \
+    .app_id(settings.feishu_app_id) \
+    .app_secret(settings.feishu_app_secret) \
+    .build()
 
 
 async def send_message(open_id: str, text: str) -> None:
-    token = await get_tenant_token()
-    async with httpx.AsyncClient() as client:
-        await client.post(
-            f"{FEISHU_API}/im/v1/messages?receive_id_type=open_id",
-            headers={"Authorization": f"Bearer {token}"},
-            json={
-                "receive_id": open_id,
-                "msg_type": "text",
-                "content": f'{{"text": "{text}"}}',
-            },
-        )
+    req = CreateMessageRequest.builder() \
+        .receive_id_type("open_id") \
+        .request_body(
+            CreateMessageRequestBody.builder()
+            .receive_id(open_id)
+            .msg_type("text")
+            .content(f'{{"text":"{text}"}}')
+            .build()
+        ).build()
+    client.im.v1.message.create(req)
+
+
+def build_ws_client(on_message) -> lark.ws.Client:
+    """Build a Feishu WebSocket client with a message handler."""
+    return lark.ws.Client(
+        settings.feishu_app_id,
+        settings.feishu_app_secret,
+        event_handler=lark.EventDispatcherHandler.builder(
+            settings.feishu_encrypt_key,
+            settings.feishu_verification_token,
+        ).register(
+            lark.im.v1.P2ImMessageReceiveV1,
+            on_message,
+        ).build(),
+        log_level=lark.LogLevel.INFO,
+    )
