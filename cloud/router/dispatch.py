@@ -28,7 +28,9 @@ async def dispatch(open_id: str, text: str) -> None:
 def _resolve_user(open_id: str) -> str | None:
     result = supabase.table("pi_matrix_feishu_bindings") \
         .select("user_id").eq("open_id", open_id).maybe_single().execute()
-    return result.data["user_id"] if result.data else None
+    if result is None or not result.data:
+        return None
+    return result.data["user_id"]
 
 
 def _resolve_instance(user_id: str) -> dict | None:
@@ -37,7 +39,9 @@ def _resolve_instance(user_id: str) -> dict | None:
         .eq("user_id", user_id) \
         .eq("instance_type", "cloud") \
         .maybe_single().execute()
-    return result.data or None
+    if result is None or not result.data:
+        return None
+    return result.data
 
 
 async def _deliver(endpoint: str, open_id: str, text: str) -> None:
