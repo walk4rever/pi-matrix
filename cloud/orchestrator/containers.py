@@ -22,9 +22,11 @@ def provision(user_id: str) -> str:
         restart_policy={"Name": "always"},
         environment={
             "ROUTER_REPLY_URL": settings.router_reply_url,
+            "GATEWAY_URL": settings.gateway_url,
+            "GATEWAY_KEY": settings.gateway_key,
             "HERMES_MODEL": settings.hermes_model,
-            "ANTHROPIC_API_KEY": settings.anthropic_api_key,
         },
+        network="pi-matrix",  # join the same docker network
         labels={"pi-matrix.user_id": user_id},
     )
 

@@ -1,6 +1,6 @@
 """
 Thin HTTP wrapper around hermes AIAgent.
-Receives messages from cloud router, runs hermes, posts reply back.
+Calls our LiteLLM Gateway — no direct LLM API keys needed in this container.
 """
 import asyncio
 import os
@@ -12,10 +12,15 @@ from run_agent import AIAgent
 app = FastAPI()
 
 ROUTER_REPLY_URL = os.environ["ROUTER_REPLY_URL"]
-HERMES_MODEL = os.environ.get("HERMES_MODEL", "anthropic/claude-haiku-4-5")
+GATEWAY_URL      = os.environ["GATEWAY_URL"]       # http://gateway:4000/v1
+GATEWAY_KEY      = os.environ["GATEWAY_KEY"]        # litellm master key
+HERMES_MODEL     = os.environ.get("HERMES_MODEL", "default")
 
-# One agent per container = one user, conversation context preserved across messages
-agent = AIAgent(model=HERMES_MODEL)
+agent = AIAgent(
+    model=HERMES_MODEL,
+    base_url=GATEWAY_URL,
+    api_key=GATEWAY_KEY,
+)
 
 
 class InboxMessage(BaseModel):
@@ -27,7 +32,7 @@ class InboxMessage(BaseModel):
 async def inbox(msg: InboxMessage):
     loop = asyncio.get_event_loop()
     response = await loop.run_in_executor(None, agent.run_conversation, msg.text)
-    async with httpx.AsyncClient(timeout=30) as client:
+    async with httpx.AsyncClient(timeout=60) as client:
         await client.post(ROUTER_REPLY_URL, json={"open_id": msg.open_id, "text": response})
     return {"ok": True}
 

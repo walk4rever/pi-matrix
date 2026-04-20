@@ -6,9 +6,10 @@ class Settings(BaseSettings):
     supabase_service_key: str
 
     docker_image: str = "pi-matrix/hermes-agent:latest"
-    router_reply_url: str           # e.g. https://router.pi-matrix.com/reply
-    hermes_model: str = "anthropic/claude-haiku-4-5"
-    anthropic_api_key: str = ""     # passed into each container
+    router_reply_url: str = "http://router:8000/reply"
+    gateway_url: str = "http://gateway:4000/v1"
+    gateway_key: str                # litellm master key
+    hermes_model: str = "default"
     container_port: int = 8080
 
     class Config:
