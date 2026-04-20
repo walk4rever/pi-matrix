@@ -26,9 +26,7 @@ def register(body: RegisterRequest):
             "email_confirm": True,
         })
     except Exception as e:
-        if "already been registered" not in str(e) and "already registered" not in str(e):
-            raise HTTPException(status_code=400, detail=str(e))
-        # User exists — still send magic link below
+        raise HTTPException(status_code=400, detail=str(e))
 
     # Generate magic link so user is auto-logged in when clicking the email
     redirect_to = f"{settings.dashboard_url}/bind"
