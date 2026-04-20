@@ -1,2 +1,0 @@
--- Merged into 001_initial_schema.sql (pi_matrix_feishu_bindings)
--- This file intentionally left empty.

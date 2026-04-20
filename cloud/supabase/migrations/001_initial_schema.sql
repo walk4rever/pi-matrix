@@ -50,6 +50,13 @@ create policy "users own their memories"
 create policy "users own their feishu bindings"
   on pi_matrix_feishu_bindings for all using (auth.uid() = user_id);
 
+-- Grants
+grant usage on schema public to anon, authenticated;
+grant select, insert, update, delete on pi_matrix_devices         to authenticated;
+grant select, insert, update, delete on pi_matrix_user_configs    to authenticated;
+grant select, insert, update, delete on pi_matrix_memories        to authenticated;
+grant select, insert, update, delete on pi_matrix_feishu_bindings to authenticated;
+
 -- Indexes
 create index on pi_matrix_devices         (user_id);
 create index on pi_matrix_devices         (token);
