@@ -57,6 +57,9 @@ grant select, insert, update, delete on pi_matrix_user_configs    to authenticat
 grant select, insert, update, delete on pi_matrix_memories        to authenticated;
 grant select, insert, update, delete on pi_matrix_feishu_bindings to authenticated;
 
+-- Unique constraints
+alter table pi_matrix_devices add constraint pi_matrix_devices_user_name_unique unique (user_id, name);
+
 -- Indexes
 create index on pi_matrix_devices         (user_id);
 create index on pi_matrix_devices         (token);

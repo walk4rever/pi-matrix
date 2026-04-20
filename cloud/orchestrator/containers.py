@@ -30,9 +30,8 @@ def provision(user_id: str) -> str:
         labels={"pi-matrix.user_id": user_id},
     )
 
-    # Get assigned IP on the default bridge network
     container.reload()
-    ip = container.attrs["NetworkSettings"]["IPAddress"]
+    ip = container.attrs["NetworkSettings"]["Networks"]["pi-matrix"]["IPAddress"]
     return f"http://{ip}:{settings.container_port}"
 
 

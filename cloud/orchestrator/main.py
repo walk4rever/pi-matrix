@@ -2,7 +2,7 @@
 Orchestrator API — called by Supabase webhooks on user lifecycle events.
 """
 import secrets
-from fastapi import FastAPI, Header, HTTPException
+from fastapi import FastAPI, Header, HTTPException, Depends
 from pydantic import BaseModel
 from supabase import create_client
 from containers import provision, deprovision
@@ -11,8 +11,6 @@ from config import settings
 app = FastAPI(title="pi-matrix orchestrator", version="0.1.0")
 supabase = create_client(settings.supabase_url, settings.supabase_service_key)
 
-WEBHOOK_SECRET = secrets.token_urlsafe(32)  # set via env in production
-
 
 class UserEvent(BaseModel):
     type: str        # INSERT | DELETE
@@ -20,12 +18,12 @@ class UserEvent(BaseModel):
 
 
 def _auth(secret: str = Header(alias="x-webhook-secret")) -> None:
-    if secret != WEBHOOK_SECRET:
+    if secret != settings.gateway_key:
         raise HTTPException(status_code=403)
 
 
 @app.post("/webhook/user")
-def on_user_event(event: UserEvent, _=_auth):
+def on_user_event(event: UserEvent, _: None = Depends(_auth)):
     user_id = event.record.get("id")
     if not user_id:
         return {"ok": False, "reason": "no user_id"}
