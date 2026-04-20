@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.routers import devices, memory, config, feishu
+from app.routers import devices, memory, config, feishu, auth
 
 app = FastAPI(title="pi-matrix API", version="0.1.0")
 
@@ -11,6 +11,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.include_router(auth.router)
 app.include_router(devices.router)
 app.include_router(memory.router)
 app.include_router(config.router)

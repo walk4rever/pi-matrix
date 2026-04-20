@@ -2,9 +2,8 @@
 
 import { useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
-import { supabase } from "@/lib/supabase";
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://matrix.air7.fun";
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "https://relay.air7.fun/pm/api";
 
 function RegisterForm() {
   const searchParams = useSearchParams();
@@ -21,32 +20,28 @@ function RegisterForm() {
     setError("");
     setLoading(true);
 
-    const redirectTo = openId
-      ? `${SITE_URL}/bind?open_id=${encodeURIComponent(openId)}`
-      : `${SITE_URL}/bind`;
-
-    const { error: signUpError } = await supabase.auth.signUp({
-      email,
-      password,
-      options: { emailRedirectTo: redirectTo },
+    const res = await fetch(`${API_URL}/auth/register`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password, open_id: openId }),
     });
 
-    if (signUpError) {
-      setError(signUpError.message);
-      setLoading(false);
-      return;
+    if (res.ok) {
+      setSent(true);
+    } else {
+      const body = await res.json().catch(() => ({}));
+      setError(body.detail ?? "注册失败，请重试。");
     }
-
-    setSent(true);
+    setLoading(false);
   }
 
   if (sent) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="bg-white p-8 rounded-xl shadow w-full max-w-sm text-center">
-          <h1 className="text-2xl font-bold mb-4">查收确认邮件</h1>
+          <h1 className="text-2xl font-bold mb-4">查收邮件</h1>
           <p className="text-gray-500 text-sm">
-            已发送确认邮件至 <strong>{email}</strong>，点击邮件中的链接完成注册并绑定飞书。
+            已发送绑定链接至 <strong>{email}</strong>，点击邮件中的按钮完成绑定，您的数字员工即刻上线。
           </p>
         </div>
       </div>
