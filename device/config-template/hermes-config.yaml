@@ -1,0 +1,20 @@
+# Hermes agent configuration template
+# Copy to /etc/pi-matrix/hermes-config.yaml and fill in values
+
+# IM platform - choose one
+platform: feishu   # feishu | wecom | weixin
+
+feishu:
+  app_id: ""
+  app_secret: ""
+  verification_token: ""
+
+# LLM gateway (cloud)
+llm_gateway:
+  url: ""         # your cloud gateway endpoint
+  api_key: ""
+
+# Memory service (cloud)
+memory:
+  url: ""
+  api_key: ""
