@@ -4,32 +4,35 @@
 
 [中文版](./README.zh.md)
 
-pi-matrix is an all-in-one intelligent assistant — AI Agent capabilities pre-installed on a Mac mini, accessible through Feishu or WeChat. No technical background required. Plug in, connect to the internet, and start chatting.
+pi-matrix is an all-in-one intelligent assistant. AI Agent capabilities delivered directly to you — accessible through Feishu or WeChat. No technical background required. No setup. No maintenance.
+
+---
+
+## Two Ways to Get Started
+
+### Mac mini Edition
+A pre-configured Mac mini shipped to your door. Your digital employee runs entirely on your own hardware — your data never leaves your premises.
+
+### Cloud Edition
+No hardware needed. We host your digital employee in an isolated cloud instance. Activate your account and start chatting within minutes.
+
+Both editions offer the same experience: just send a message in Feishu or WeChat.
 
 ---
 
 ## Why pi-matrix
 
-**True Privacy**
-Your data belongs to you. All local computation runs on your own device. Cloud data is fully under your control — export or delete it anytime.
+**Zero effort for users**
+No software to install, no command line, no decisions to make. Your digital employee is always on and always ready.
 
-**Zero Setup**
-No software to install, no command line, no configuration. Once the device is on, just send a message in Feishu or WeChat — your digital employee is ready.
+**True privacy**
+Your data belongs to you. Cloud data is fully under your control — export or delete it anytime. Mac mini edition keeps everything local.
 
-**Always On**
-The device runs automatically and recovers on its own after a power cycle. Cloud monitoring keeps your digital employee available around the clock.
+**Always on**
+Your digital employee runs automatically and recovers on its own. We monitor uptime around the clock so you don't have to.
 
-**Continuously Improving**
-We deliver capability upgrades remotely via the cloud. You don't need to do anything — your digital employee just gets smarter over time.
-
----
-
-## What You Get
-
-- **Hardware**: Pre-configured Mac mini — plug in and go
-- **Interface**: Feishu / WeChat — tools you already use every day
-- **Cloud sync**: Settings, memory, and data synced across devices
-- **Security**: End-to-end data isolation — your data stays yours
+**Continuously improving**
+Capability upgrades are delivered remotely. Your digital employee just gets smarter over time — no action needed on your end.
 
 ---
 
