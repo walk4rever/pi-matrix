@@ -2,10 +2,12 @@
 Feishu account binding: links a user's Feishu open_id to their pi-matrix account.
 User initiates from dashboard after logging in.
 """
+import httpx
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from app.middleware.auth import get_current_user
 from app.db import supabase
+from app.config import settings
 
 router = APIRouter(prefix="/feishu", tags=["feishu"])
 
@@ -25,7 +27,18 @@ def bind_feishu(body: BindRequest, user: dict = Depends(get_current_user)):
         "user_id": user["sub"],
         "open_id": body.open_id,
     }).execute()
+
+    _provision(user["sub"])
     return {"ok": True}
+
+
+def _provision(user_id: str) -> None:
+    with httpx.Client(timeout=30) as client:
+        client.post(
+            f"{settings.orchestrator_url}/webhook/user",
+            json={"type": "INSERT", "record": {"id": user_id}},
+            headers={"x-webhook-secret": settings.gateway_key},
+        )
 
 
 @router.get("/bind")
