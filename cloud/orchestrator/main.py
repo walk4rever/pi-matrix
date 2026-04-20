@@ -43,7 +43,7 @@ def _provision_user(user_id: str) -> None:
 
     # Register device in Supabase
     device_token = secrets.token_urlsafe(32)
-    supabase.table("devices").upsert({
+    supabase.table("pi_matrix_devices").upsert({
         "user_id": user_id,
         "name": "cloud-instance",
         "token": device_token,
@@ -54,7 +54,7 @@ def _provision_user(user_id: str) -> None:
 
 def _deprovision_user(user_id: str) -> None:
     deprovision(user_id)
-    supabase.table("devices").delete().eq("user_id", user_id).eq("name", "cloud-instance").execute()
+    supabase.table("pi_matrix_devices").delete().eq("user_id", user_id).eq("name", "cloud-instance").execute()
 
 
 @app.get("/health")

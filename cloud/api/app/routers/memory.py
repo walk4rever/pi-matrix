@@ -13,8 +13,8 @@ class MemoryItem(BaseModel):
 
 @router.post("/")
 def add_memory(body: MemoryItem, token: str = Depends(get_device)):
-    device = supabase.table("devices").select("user_id,id").eq("token", token).single().execute()
-    supabase.table("memories").insert({
+    device = supabase.table("pi_matrix_devices").select("user_id,id").eq("token", token).single().execute()
+    supabase.table("pi_matrix_memories").insert({
         "user_id": device.data["user_id"],
         "device_id": device.data["id"],
         "content": body.content,
@@ -24,11 +24,11 @@ def add_memory(body: MemoryItem, token: str = Depends(get_device)):
 
 @router.get("/")
 def list_memories(user: dict = Depends(get_current_user)):
-    result = supabase.table("memories").select("*").eq("user_id", user["sub"]).order("created_at", desc=True).limit(100).execute()
+    result = supabase.table("pi_matrix_memories").select("*").eq("user_id", user["sub"]).order("created_at", desc=True).limit(100).execute()
     return result.data
 
 
 @router.delete("/{memory_id}")
 def delete_memory(memory_id: str, user: dict = Depends(get_current_user)):
-    supabase.table("memories").delete().eq("id", memory_id).eq("user_id", user["sub"]).execute()
+    supabase.table("pi_matrix_memories").delete().eq("id", memory_id).eq("user_id", user["sub"]).execute()
     return {"ok": True}

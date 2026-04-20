@@ -26,13 +26,13 @@ async def dispatch(open_id: str, text: str) -> None:
 
 
 def _resolve_user(open_id: str) -> str | None:
-    result = supabase.table("feishu_bindings") \
+    result = supabase.table("pi_matrix_feishu_bindings") \
         .select("user_id").eq("open_id", open_id).maybe_single().execute()
     return result.data["user_id"] if result.data else None
 
 
 def _resolve_instance(user_id: str) -> dict | None:
-    result = supabase.table("devices") \
+    result = supabase.table("pi_matrix_devices") \
         .select("endpoint,instance_type") \
         .eq("user_id", user_id) \
         .eq("instance_type", "cloud") \
