@@ -1,25 +1,18 @@
 model_list:
-  # 火山方舟 — MVP 主力模型
   - model_name: default
     litellm_params:
-      model: openai/your-endpoint-id          # 火山方舟推理接入点 ID
-      api_base: https://ark.cn-beijing.volces.com/api/v3
-      api_key: os.environ/ARK_API_KEY
+      model: openai/os.environ/AI_PRIMARY_MODEL
+      api_base: os.environ/AI_API_BASE_URL
+      api_key: os.environ/AI_API_KEY
 
-  - model_name: fast
+  - model_name: vision
     litellm_params:
-      model: openai/your-lite-endpoint-id     # 轻量版接入点 ID
-      api_base: https://ark.cn-beijing.volces.com/api/v3
-      api_key: os.environ/ARK_API_KEY
-
-  # 备用 — Anthropic（国际线路）
-  - model_name: claude
-    litellm_params:
-      model: anthropic/claude-haiku-4-5
-      api_key: os.environ/ANTHROPIC_API_KEY
+      model: openai/os.environ/AI_VISION_MODEL
+      api_base: os.environ/AI_API_BASE_URL
+      api_key: os.environ/AI_API_KEY
 
 general_settings:
   master_key: os.environ/GATEWAY_MASTER_KEY
 
 litellm_settings:
-  drop_params: true      # 忽略不支持的参数，兼容多模型
+  drop_params: true
