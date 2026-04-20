@@ -1,9 +1,9 @@
-"""
-Feishu client: long connection event listener + message sending.
-"""
-import httpx
 import lark_oapi as lark
-from lark_oapi.api.im.v1 import CreateMessageRequest, CreateMessageRequestBody
+from lark_oapi.api.im.v1 import (
+    CreateMessageRequest,
+    CreateMessageRequestBody,
+    P2ImMessageReceiveV1,
+)
 from config import settings
 
 client = lark.Client.builder() \
@@ -26,16 +26,14 @@ async def send_message(open_id: str, text: str) -> None:
 
 
 def build_ws_client(on_message) -> lark.ws.Client:
-    """Build a Feishu WebSocket client with a message handler."""
+    handler = lark.EventDispatcherHandler.builder(
+        settings.feishu_encrypt_key,
+        settings.feishu_verification_token,
+    ).register_p2_im_message_receive_v1(on_message).build()
+
     return lark.ws.Client(
         settings.feishu_app_id,
         settings.feishu_app_secret,
-        event_handler=lark.EventDispatcherHandler.builder(
-            settings.feishu_encrypt_key,
-            settings.feishu_verification_token,
-        ).register(
-            lark.im.v1.P2ImMessageReceiveV1,
-            on_message,
-        ).build(),
+        event_handler=handler,
         log_level=lark.LogLevel.INFO,
     )

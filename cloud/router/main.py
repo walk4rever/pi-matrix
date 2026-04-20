@@ -3,7 +3,6 @@ pi-matrix router: receives Feishu events via long connection (WebSocket),
 dispatches to correct user agent instance, relays replies back to Feishu.
 """
 import asyncio
-import threading
 import lark_oapi as lark
 from fastapi import FastAPI, Request, HTTPException
 from feishu import send_message, build_ws_client
@@ -13,7 +12,7 @@ app = FastAPI(title="pi-matrix router", version="0.1.0")
 
 
 def _on_message(data: lark.im.v1.P2ImMessageReceiveV1) -> None:
-    """Called by Feishu SDK on each incoming message (runs in SDK thread)."""
+    """Called by Feishu SDK on each incoming message."""
     import json
     sender_open_id = data.event.sender.sender_id.open_id
     message = data.event.message
@@ -22,19 +21,14 @@ def _on_message(data: lark.im.v1.P2ImMessageReceiveV1) -> None:
     content = json.loads(message.content)
     text = content.get("text", "").strip()
     if text and sender_open_id:
-        asyncio.run(dispatch(sender_open_id, text))
+        asyncio.get_event_loop().create_task(dispatch(sender_open_id, text))
 
 
 @app.on_event("startup")
-def start_feishu_ws():
-    """Start Feishu long connection in a background thread on startup."""
+async def start_feishu_ws():
+    """Start Feishu long connection as a task in FastAPI's event loop."""
     ws_client = build_ws_client(_on_message)
-
-    def run():
-        ws_client.start()
-
-    thread = threading.Thread(target=run, daemon=True)
-    thread.start()
+    asyncio.create_task(ws_client._connect())
 
 
 @app.post("/reply")
