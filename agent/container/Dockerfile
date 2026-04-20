@@ -1,7 +1,7 @@
 FROM python:3.12-slim
 
 RUN pip install --no-cache-dir \
-    "hermes-agent" \
+    "git+https://github.com/NousResearch/hermes-agent.git" \
     "fastapi>=0.111.0" \
     "uvicorn[standard]>=0.29.0" \
     "httpx>=0.27.0"
