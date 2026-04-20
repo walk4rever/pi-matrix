@@ -28,6 +28,8 @@ services:
       context: ../cloud/api
     restart: always
     env_file: .env
+    ports:
+      - "127.0.0.1:8080:8000"    # exposed to host nginx only
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s
@@ -38,25 +40,14 @@ services:
       context: ../cloud/orchestrator
     restart: always
     env_file: .env
+    ports:
+      - "127.0.0.1:8081:8000"    # exposed to host nginx only
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s
       retries: 3
-
-  nginx:
-    image: nginx:alpine
-    restart: always
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-      - ./nginx/certs:/etc/nginx/certs:ro
-    depends_on:
-      - router
-      - api
 
 networks:
   default:
