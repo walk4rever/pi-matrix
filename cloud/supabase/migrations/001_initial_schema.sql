@@ -51,11 +51,11 @@ create policy "users own their feishu bindings"
   on pi_matrix_feishu_bindings for all using (auth.uid() = user_id);
 
 -- Grants
-grant usage on schema public to anon, authenticated;
-grant select, insert, update, delete on pi_matrix_devices         to authenticated;
-grant select, insert, update, delete on pi_matrix_user_configs    to authenticated;
-grant select, insert, update, delete on pi_matrix_memories        to authenticated;
-grant select, insert, update, delete on pi_matrix_feishu_bindings to authenticated;
+grant usage on schema public to anon, authenticated, service_role;
+grant select, insert, update, delete on pi_matrix_devices         to authenticated, service_role;
+grant select, insert, update, delete on pi_matrix_user_configs    to authenticated, service_role;
+grant select, insert, update, delete on pi_matrix_memories        to authenticated, service_role;
+grant select, insert, update, delete on pi_matrix_feishu_bindings to authenticated, service_role;
 
 -- Unique constraints
 alter table pi_matrix_devices add constraint pi_matrix_devices_user_name_unique unique (user_id, name);
