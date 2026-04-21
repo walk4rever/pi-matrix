@@ -37,7 +37,6 @@ function BindForm() {
 
     if (res.ok) {
       setStatus("done");
-      setMessage("绑定成功！回飞书发消息，您的数字员工马上响应。");
     } else {
       const body = await res.json().catch(() => ({}));
       setMessage(body.detail ?? "绑定失败，请重试。");
@@ -58,33 +57,74 @@ function BindForm() {
   }, []);
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="bg-white p-8 rounded-xl shadow w-full max-w-sm text-center">
-        <h1 className="text-2xl font-bold mb-4">绑定飞书账号</h1>
+    <main className="min-h-screen bg-parchment flex items-center justify-center px-4">
+      <div className="bg-ivory border border-border-cream rounded-2xl shadow-whisper w-full max-w-sm p-10 text-center">
 
-        {status === "waiting" || status === "binding" ? (
+        {(status === "waiting" || status === "binding") && (
           <>
-            <div className="flex justify-center mb-4">
-              <svg className="animate-spin h-8 w-8 text-gray-400" viewBox="0 0 24 24" fill="none">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+            <div className="flex justify-center mb-6">
+              <svg
+                className="animate-spin h-8 w-8 text-stone-gray"
+                viewBox="0 0 24 24"
+                fill="none"
+              >
+                <circle
+                  className="opacity-20"
+                  cx="12" cy="12" r="10"
+                  stroke="currentColor"
+                  strokeWidth="3"
+                />
+                <path
+                  className="opacity-80"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
+                />
               </svg>
             </div>
-            <p className="text-gray-500 text-sm">正在绑定中，请稍候...</p>
-          </>
-        ) : status === "done" ? (
-          <>
-            <div className="text-4xl mb-4">🎉</div>
-            <p className="text-green-600 font-semibold">{message}</p>
-          </>
-        ) : (
-          <>
-            <div className="text-4xl mb-4">⚠️</div>
-            <p className="text-red-500 text-sm">{message}</p>
+            <h1 className="font-serif text-2xl font-medium text-nearblack mb-2" style={{ lineHeight: 1.2 }}>
+              正在绑定
+            </h1>
+            <p className="text-stone-gray text-sm leading-relaxed">
+              正在将您的飞书账号与 pi-matrix 绑定，请稍候...
+            </p>
           </>
         )}
+
+        {status === "done" && (
+          <>
+            <div className="text-5xl mb-6">🎉</div>
+            <h1 className="font-serif text-2xl font-medium text-nearblack mb-2" style={{ lineHeight: 1.2 }}>
+              绑定成功
+            </h1>
+            <p className="text-olive-gray text-sm leading-relaxed">
+              您的数字员工正在准备中，<br />
+              回飞书发消息，马上开始对话。
+            </p>
+            <div className="mt-8 pt-6 border-t border-border-cream">
+              <p className="text-stone-gray text-xs leading-relaxed">
+                此页面可以关闭
+              </p>
+            </div>
+          </>
+        )}
+
+        {status === "error" && (
+          <>
+            <div className="text-5xl mb-6">⚠️</div>
+            <h1 className="font-serif text-2xl font-medium text-nearblack mb-2" style={{ lineHeight: 1.2 }}>
+              绑定失败
+            </h1>
+            <p className="text-[#b53333] text-sm leading-relaxed">{message}</p>
+            <div className="mt-8 pt-6 border-t border-border-cream">
+              <p className="text-stone-gray text-xs leading-relaxed">
+                请重新点击邮件中的绑定链接
+              </p>
+            </div>
+          </>
+        )}
+
       </div>
-    </div>
+    </main>
   );
 }
 
