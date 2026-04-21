@@ -29,7 +29,8 @@ function BindForm() {
       setStatus("error");
       return;
     }
-    if (!session) {
+    if (session === undefined) return; // still loading
+    if (session === null) {
       setMessage("登录已过期，请重新点击邮件中的链接。");
       setStatus("error");
       return;
@@ -71,10 +72,10 @@ function BindForm() {
             {message && <p className="text-red-500 text-sm mb-4">{message}</p>}
             <button
               onClick={handleBind}
-              disabled={status === "loading"}
+              disabled={status === "loading" || session === undefined}
               className="w-full bg-black text-white rounded-lg py-2 font-semibold hover:bg-gray-800 disabled:opacity-50"
             >
-              {status === "loading" ? "绑定中..." : "绑定飞书"}
+              {session === undefined ? "验证中..." : status === "loading" ? "绑定中..." : "绑定飞书"}
             </button>
           </>
         )}
