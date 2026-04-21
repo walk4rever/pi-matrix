@@ -7,6 +7,9 @@ node_modules/
 deploy/.env
 **/.env.vercel
 
+# Internal docs (not for public repo)
+PRODUCT.md
+
 # Build artifacts
 **/.next/
 **/*.tsbuildinfo
