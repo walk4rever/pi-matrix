@@ -1,4 +1,5 @@
 import Link from "next/link";
+import FeishuQRCode from "@/components/FeishuQRCode";
 
 export default function HomePage() {
   return (
@@ -31,6 +32,7 @@ export default function HomePage() {
               <Link href="/register" className="btn-hero">免费注册 →</Link>
               <a href="#how-it-works" className="btn-ghost">了解流程</a>
             </div>
+            <FeishuQRCode />
           </div>
         </section>
 

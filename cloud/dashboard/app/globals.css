@@ -319,6 +319,25 @@ body {
   gap: 1.25rem;
 }
 
+.qr-wrap {
+  margin-top: 2.5rem;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 1rem;
+  background: var(--claude-ivory);
+  border: 1px solid var(--claude-sand);
+  border-radius: 12px;
+}
+
+.qr-label {
+  font-size: 0.78rem;
+  color: var(--claude-ink-light);
+  letter-spacing: 0.01em;
+  margin: 0;
+}
+
 .btn-hero {
   display: inline-flex;
   align-items: center;
