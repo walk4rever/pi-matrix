@@ -10,6 +10,7 @@ function RegisterForm() {
   const openId = searchParams.get("open_id") ?? "";
 
   const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [sent, setSent] = useState(false);
@@ -21,7 +22,7 @@ function RegisterForm() {
     const res = await fetch(`${API_URL}/auth/register`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, open_id: openId }),
+      body: JSON.stringify({ email, password, open_id: openId }),
     });
     if (res.ok) {
       setSent(true);
@@ -57,7 +58,7 @@ function RegisterForm() {
           <div className="display-serif">
             pi<span className="text-accent">-matrix</span>
           </div>
-          <p className="auth-card-subtitle">您的专属数字员工，输入邮箱即可开始。</p>
+          <p className="auth-card-subtitle">您的专属数字员工，注册后即刻上线。</p>
         </div>
 
         <form onSubmit={handleSubmit}>
@@ -73,15 +74,27 @@ function RegisterForm() {
                 className="form-input"
               />
             </div>
+            <div>
+              <label className="form-label">密码</label>
+              <input
+                type="password"
+                placeholder="至少 6 位"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                minLength={6}
+                className="form-input"
+              />
+            </div>
             {error && <p className="form-error">{error}</p>}
             <button type="submit" disabled={loading} className="btn-primary">
-              {loading ? "发送中..." : "发送绑定链接"}
+              {loading ? "注册中..." : "注册"}
             </button>
           </div>
         </form>
 
         <p className="form-hint">
-          点击链接即完成绑定，无需设置密码。
+          注册后将收到绑定邮件，点击完成飞书绑定。
         </p>
       </div>
     </div>

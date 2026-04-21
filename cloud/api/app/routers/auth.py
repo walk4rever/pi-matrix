@@ -2,7 +2,6 @@
 User registration: create Supabase account + send welcome email via Resend.
 Pre-provisions hermes container at registration time to minimize cold-start delay.
 """
-import secrets
 import threading
 import httpx
 from fastapi import APIRouter, HTTPException
@@ -15,15 +14,18 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 
 class RegisterRequest(BaseModel):
     email: EmailStr
+    password: str
     open_id: str = ""
 
 
 @router.post("/register")
 def register(body: RegisterRequest):
+    if len(body.password) < 6:
+        raise HTTPException(status_code=400, detail="密码至少 6 位。")
     try:
         result = supabase.auth.admin.create_user({
             "email": body.email,
-            "password": secrets.token_urlsafe(24),
+            "password": body.password,
             "email_confirm": True,
         })
         user_id = result.user.id
