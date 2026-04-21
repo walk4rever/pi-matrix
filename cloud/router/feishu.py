@@ -66,20 +66,24 @@ def _build_card_elements(text: str) -> list[dict]:
                     rows.append(row)
                 i += 1
 
+            table_headers = [
+                {"text": {"content": h or "-"}}
+                for h in headers
+            ]
+            table_rows = []
             for row in rows:
-                fields = []
-                for col, header in enumerate(headers):
-                    value = row[col] if col < len(row) else ""
-                    fields.append(
-                        {
-                            "is_short": len(headers) <= 2,
-                            "text": {
-                                "tag": "lark_md",
-                                "content": f"**{header}**\n{value or '-'}",
-                            },
-                        }
-                    )
-                elements.append({"tag": "div", "fields": fields})
+                table_rows.append([
+                    {"text": {"content": (row[col] if col < len(row) and row[col] else "-")}}
+                    for col in range(len(headers))
+                ])
+
+            elements.append(
+                {
+                    "tag": "table",
+                    "headers": table_headers,
+                    "rows": table_rows,
+                }
+            )
             continue
 
         pending_text.append(lines[i])
