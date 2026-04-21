@@ -3,7 +3,8 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "pi-matrix",
-  description: "Your digital employee dashboard",
+  description: "您的专属数字员工，在飞书候命。",
+  icons: { icon: "/logo.svg" },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
