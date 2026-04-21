@@ -6,6 +6,7 @@ Uses Hermes native session persistence (SessionDB) keyed by Feishu open_id.
 Also forwards Hermes tool/status progress updates back to Feishu.
 """
 import asyncio
+import json
 import logging
 import os
 import time
@@ -134,10 +135,45 @@ class ProgressEmitter:
                         return str(first[key])
         return "处理中..."
 
+    def _short(self, value: str, limit: int = 90) -> str:
+        value = (value or "").strip().replace("\n", " ")
+        return value if len(value) <= limit else value[:limit] + "…"
+
+    def _extract_tool_detail(self, *args, **kwargs) -> str:
+        # Hermes callback often passes function_args as 3rd positional arg.
+        raw = None
+        if len(args) >= 3 and args[2]:
+            raw = args[2]
+        elif kwargs.get("args"):
+            raw = kwargs.get("args")
+
+        if raw is None:
+            return ""
+
+        if isinstance(raw, dict):
+            data = raw
+        else:
+            text = str(raw).strip()
+            if not text:
+                return ""
+            try:
+                data = json.loads(text)
+            except Exception:
+                return self._short(text)
+
+        for key in ("command", "query", "question", "prompt", "code", "path", "pattern"):
+            if key in data and data[key]:
+                return self._short(str(data[key]))
+        return ""
+
     # Hermes callbacks (accept flexible signatures)
     def tool_start(self, *args, **kwargs) -> None:
         tool = self._extract_tool_name(*args, **kwargs)
-        self._send(f"🔧 正在执行：{tool}")
+        detail = self._extract_tool_detail(*args, **kwargs)
+        if detail:
+            self._send(f"🔧 正在执行：{tool}（{detail}）")
+        else:
+            self._send(f"🔧 正在执行：{tool}")
 
     def tool_complete(self, *args, **kwargs) -> None:
         tool = self._extract_tool_name(*args, **kwargs)
