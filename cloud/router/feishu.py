@@ -20,11 +20,61 @@ client = lark.Client.builder() \
     .build()
 
 
+def _parse_table_row(line: str) -> list[str]:
+    cells = [c.strip() for c in line.strip().strip("|").split("|")]
+    return [c for c in cells if c != ""]
+
+
+def _convert_markdown_tables(text: str) -> str:
+    """Convert markdown tables to Feishu-friendly bullet lists."""
+    import re
+
+    sep_re = re.compile(r"^\s*\|?(?:\s*:?-{3,}:?\s*\|)+\s*:?-{3,}:?\s*\|?\s*$")
+    lines = text.splitlines()
+    out: list[str] = []
+    i = 0
+
+    while i < len(lines):
+        if (
+            i + 1 < len(lines)
+            and "|" in lines[i]
+            and sep_re.match(lines[i + 1] or "")
+        ):
+            headers = _parse_table_row(lines[i])
+            if not headers:
+                out.append(lines[i])
+                i += 1
+                continue
+
+            i += 2
+            rows: list[list[str]] = []
+            while i < len(lines) and "|" in lines[i]:
+                row = _parse_table_row(lines[i])
+                if row:
+                    rows.append(row)
+                i += 1
+
+            for row in rows:
+                first_header = headers[0]
+                first_value = row[0] if len(row) > 0 else ""
+                out.append(f"- **{first_header}**：{first_value}")
+                for col in range(1, min(len(headers), len(row))):
+                    out.append(f"  - {headers[col]}：{row[col]}")
+            continue
+
+        out.append(lines[i])
+        i += 1
+
+    return "\n".join(out)
+
+
 def _feishu_markdown(text: str) -> str:
     """Convert unsupported markdown to Feishu card markdown."""
     import re
     # ### heading → **heading**
     text = re.sub(r'^#{1,6}\s+(.+)$', r'**\1**', text, flags=re.MULTILINE)
+    # Markdown table → list (Feishu markdown has weak table support)
+    text = _convert_markdown_tables(text)
     return text
 
 
