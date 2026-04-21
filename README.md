@@ -1,38 +1,52 @@
 # pi-matrix
 
-**Your personal AI employee, ready out of the box.**
+**Your personal iHermes employee, ready out of the box.**
 
 [中文版](./README.zh.md)
 
-pi-matrix is an all-in-one intelligent assistant. AI Agent capabilities delivered directly to you — accessible through Feishu or WeChat. No technical background required. No setup. No maintenance.
+pi-matrix is an AI employee platform built on hermes-agent. It delivers a production-ready assistant experience through **Feishu (Lark)** with near-zero setup for end users.
 
 ---
 
-## Two Ways to Get Started
+## Current Product Scope (v0.3.x)
+
+- **Primary channel:** Feishu / Lark
+- **WeChat / WeCom:** planned, not the current default flow
+- **Runtime:** one isolated Hermes container per user (cloud SKU)
+- **Session continuity:** Hermes native session persistence enabled
+
+---
+
+## Onboarding Flow (Current)
+
+1. Open Feishu on mobile and scan the QR code
+2. Enter the iHermes chat and send any message
+3. Receive the registration card, complete signup, and click the email link to bind
+4. Start chatting directly in Feishu
+
+This keeps identity binding explicit (`open_id -> user`) and avoids fragmented signup paths.
+
+---
+
+## Two SKUs
 
 ### Mac mini Edition
-A pre-configured Mac mini shipped to your door. Your digital employee runs entirely on your own hardware — your data never leaves your premises.
+A pre-configured Mac mini shipped to users. Data stays on local hardware.
 
 ### Cloud Edition
-No hardware needed. We host your digital employee in an isolated cloud instance. Activate your account and start chatting within minutes.
+No hardware required. We host a dedicated cloud instance per user.
 
-Both editions offer the same experience: just send a message in Feishu or WeChat.
+Both SKUs are designed to feel the same from the user perspective: talk to iHermes in Feishu.
 
 ---
 
-## Why pi-matrix
+## What’s Implemented
 
-**Zero effort for users**
-No software to install, no command line, no decisions to make. Your digital employee is always on and always ready.
-
-**True privacy**
-Your data belongs to you. Cloud data is fully under your control — export or delete it anytime. Mac mini edition keeps everything local.
-
-**Always on**
-Your digital employee runs automatically and recovers on its own. We monitor uptime around the clock so you don't have to.
-
-**Continuously improving**
-Capability upgrades are delivered remotely. Your digital employee just gets smarter over time — no action needed on your end.
+- Feishu router + user binding flow
+- API / Gateway / Orchestrator service stack
+- Per-user agent container provisioning
+- Hermes native session persistence with per-user state volume
+- Tool progress messages in Feishu (e.g. terminal / execute_code / clarify)
 
 ---
 
