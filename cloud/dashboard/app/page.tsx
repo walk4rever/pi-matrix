@@ -23,13 +23,6 @@ export default function HomePage() {
             <h1 className="hero-headline">
               您的数字员工，<br />在飞书候命。
             </h1>
-            <p className="hero-sub">
-              先在飞书找到 pi-matrix Bot 并发送一条消息，
-              收到注册卡片后点击完成注册与绑定，随后即可开始对话。
-            </p>
-            <div className="hero-cta">
-              <a href="#how-it-works" className="btn-ghost">查看流程</a>
-            </div>
           </div>
         </section>
 
