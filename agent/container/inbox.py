@@ -25,7 +25,20 @@ GATEWAY_URL = os.environ["GATEWAY_URL"]            # http://gateway:4000/v1
 GATEWAY_KEY = os.environ["GATEWAY_KEY"]            # litellm master key
 HERMES_MODEL = os.environ.get("HERMES_MODEL", "default")
 HERMES_STATE_DB_PATH = Path(os.environ.get("HERMES_STATE_DB_PATH", "/root/.hermes/state/state.db"))
-HERMES_ENABLED_TOOLSETS = ["hermes-feishu"]
+HERMES_ENABLED_TOOLSETS = [
+    "file",
+    "terminal",
+    "skills",
+    "memory",
+    "session_search",
+    "clarify",
+    "code_execution",
+    "delegation",
+    "todo",
+    "tts",
+    "feishu_doc",
+    "feishu_drive",
+]
 
 session_db = SessionDB(db_path=HERMES_STATE_DB_PATH)
 _session_locks: dict[str, asyncio.Lock] = {}

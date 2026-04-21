@@ -1,5 +1,16 @@
 toolsets:
-  - hermes-feishu
+  - file
+  - terminal
+  - skills
+  - memory
+  - session_search
+  - clarify
+  - code_execution
+  - delegation
+  - todo
+  - tts
+  - feishu_doc
+  - feishu_drive
 
 agent:
   max_turns: 90
