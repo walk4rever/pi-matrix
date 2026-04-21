@@ -1,3 +1,5 @@
+import json
+import logging
 import lark_oapi as lark
 from lark_oapi.api.im.v1 import (
     CreateMessageRequest,
@@ -5,6 +7,8 @@ from lark_oapi.api.im.v1 import (
     P2ImMessageReceiveV1,
 )
 from config import settings
+
+logger = logging.getLogger(__name__)
 
 client = lark.Client.builder() \
     .app_id(settings.feishu_app_id) \
@@ -19,10 +23,12 @@ async def send_message(open_id: str, text: str) -> None:
             CreateMessageRequestBody.builder()
             .receive_id(open_id)
             .msg_type("text")
-            .content(f'{{"text":"{text}"}}')
+            .content(json.dumps({"text": text}))
             .build()
         ).build()
-    client.im.v1.message.create(req)
+    resp = client.im.v1.message.create(req)
+    if not resp.success():
+        logger.error("send_message failed: code=%s msg=%s", resp.code, resp.msg)
 
 
 def build_ws_client(on_message) -> lark.ws.Client:
