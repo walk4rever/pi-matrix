@@ -2,6 +2,7 @@
 Feishu account binding: links a user's Feishu open_id to their pi-matrix account.
 User initiates from dashboard after logging in.
 """
+import threading
 import httpx
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
@@ -28,7 +29,7 @@ def bind_feishu(body: BindRequest, user: dict = Depends(get_current_user)):
         "open_id": body.open_id,
     }).execute()
 
-    _provision(user["sub"])
+    threading.Thread(target=_provision, args=(user["sub"],), daemon=True).start()
     _welcome(body.open_id)
     return {"ok": True}
 
