@@ -17,13 +17,16 @@ client = lark.Client.builder() \
 
 
 async def send_message(open_id: str, text: str) -> None:
+    card = {
+        "elements": [{"tag": "markdown", "content": text}]
+    }
     req = CreateMessageRequest.builder() \
         .receive_id_type("open_id") \
         .request_body(
             CreateMessageRequestBody.builder()
             .receive_id(open_id)
-            .msg_type("text")
-            .content(json.dumps({"text": text}))
+            .msg_type("interactive")
+            .content(json.dumps(card))
             .build()
         ).build()
     resp = client.im.v1.message.create(req)
