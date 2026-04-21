@@ -3,7 +3,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "pi-matrix",
-  description: "您的专属数字员工，在飞书候命。",
+  description: "您的专属爱马仕员工，在飞书候命。",
   icons: { icon: "/logo.svg" },
 };
 

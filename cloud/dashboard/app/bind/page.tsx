@@ -77,7 +77,7 @@ function BindForm() {
             <div className="status-icon">🎉</div>
             <div className="status-title">绑定成功</div>
             <p className="status-desc">
-              您的数字员工正在准备中，<br />
+              您的爱马仕员工正在准备中，<br />
               回飞书发消息，马上开始对话。
             </p>
             <div className="status-footer">此页面可以关闭</div>

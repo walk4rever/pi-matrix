@@ -1,7 +1,7 @@
 export default function DashboardPage() {
   return (
     <main className="p-8">
-      <h1 className="text-2xl font-bold mb-6">我的数字员工</h1>
+      <h1 className="text-2xl font-bold mb-6">我的爱马仕员工</h1>
       <div className="grid grid-cols-3 gap-4">
         <Card title="设备状态" href="/dashboard/devices" />
         <Card title="记忆管理" href="/dashboard/memory" />

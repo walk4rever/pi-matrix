@@ -85,7 +85,7 @@ async def send_registration_card(open_id: str, register_url: str) -> None:
         "elements": [
             {
                 "tag": "markdown",
-                "content": "👋 欢迎使用 **pi-matrix**\n\n您的专属数字员工正在等待，注册后即刻上线。"
+                "content": "👋 欢迎使用 **pi-matrix**\n\n您的专属爱马仕员工正在等待，注册后即刻上线。"
             },
             {
                 "tag": "action",

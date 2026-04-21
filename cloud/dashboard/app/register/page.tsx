@@ -44,7 +44,7 @@ function RegisterForm() {
             <strong style={{ color: "var(--claude-near-black)" }}>{email}</strong>
           </p>
           <div className="status-footer">
-            点击邮件中的按钮，您的数字员工自动上线。
+            点击邮件中的按钮，您的爱马仕员工自动上线。
           </div>
         </div>
       </div>
@@ -62,7 +62,7 @@ function RegisterForm() {
               pi<span className="text-accent">-matrix</span>
             </div>
           </div>
-          <p className="auth-card-subtitle">您的专属数字员工，注册后即刻上线。</p>
+          <p className="auth-card-subtitle">您的专属爱马仕员工，注册后即刻上线。</p>
         </div>
 
         <form onSubmit={handleSubmit}>

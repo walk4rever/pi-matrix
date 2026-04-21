@@ -39,7 +39,7 @@ def _welcome(open_id: str) -> None:
         with httpx.Client(timeout=10) as client:
             client.post(
                 f"{settings.router_reply_url}",
-                json={"open_id": open_id, "text": "🎉 绑定成功！您的数字员工正在准备中，稍后直接发消息开始对话。"},
+                json={"open_id": open_id, "text": "🎉 绑定成功！您的爱马仕员工正在准备中，稍后直接发消息开始对话。"},
             )
     except Exception:
         pass  # non-critical

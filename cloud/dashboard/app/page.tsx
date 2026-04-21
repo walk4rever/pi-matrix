@@ -21,7 +21,7 @@ export default function HomePage() {
           <div className="container">
             <p className="hero-overline">AI Digital Employee · Powered by Air7.fun</p>
             <h1 className="hero-headline">
-              您的数字员工，<br />在飞书候命。
+              您的爱马仕员工，<br />在飞书候命。
             </h1>
           </div>
         </section>
@@ -29,29 +29,29 @@ export default function HomePage() {
         {/* How it works */}
         <section className="steps-section" id="how-it-works">
           <div className="container">
-            <p className="section-overline">三步开始</p>
-            <h2 className="section-title">先在飞书触发，再完成注册绑定。</h2>
+            <p className="section-overline">三步完成注册</p>
+            <h2 className="section-title">扫码 → 发消息 → 注册绑定</h2>
             <div className="steps-grid">
               <div className="step-card">
                 <div className="step-number">01</div>
-                <div className="step-title">用手机扫码进入飞书</div>
+                <div className="step-title">手机飞书扫码进入 iHermes</div>
                 <p className="step-desc">
-                  用手机扫码打开飞书，进入 pi-matrix Bot 会话。
+                  打开手机端飞书，扫描下方二维码，进入 iHermes 对话窗口。
                 </p>
                 <FeishuQRCode />
               </div>
               <div className="step-card">
                 <div className="step-number">02</div>
-                <div className="step-title">发送消息获取注册卡</div>
+                <div className="step-title">发送消息，获取注册卡</div>
                 <p className="step-desc">
-                  给 Bot 发送任意消息，系统会自动返回专属注册卡片。
+                  给 iHermes 发送任意消息，系统会自动回复您的专属注册卡片。
                 </p>
               </div>
               <div className="step-card">
                 <div className="step-number">03</div>
-                <div className="step-title">点击卡片完成绑定</div>
+                <div className="step-title">完成注册并邮箱绑定</div>
                 <p className="step-desc">
-                  在卡片中完成注册与绑定，成功后回飞书直接开始对话。
+                  点击注册卡完成注册，再到邮箱点击确认链接完成绑定。
                 </p>
               </div>
             </div>
@@ -103,7 +103,7 @@ export default function HomePage() {
         {/* Dark CTA */}
         <section className="dark-cta">
           <div className="container">
-            <h2 className="dark-cta-title">先在飞书发一条消息，<br />让数字员工开始工作。</h2>
+            <h2 className="dark-cta-title">先在飞书发一条消息，<br />让爱马仕员工开始工作。</h2>
             <p className="dark-cta-sub">从飞书触发注册流程，几分钟内即可上线。</p>
           </div>
         </section>

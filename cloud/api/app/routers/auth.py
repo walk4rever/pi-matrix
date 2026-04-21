@@ -70,7 +70,7 @@ def _send_welcome_email(email: str, magic_link: str) -> None:
     html = f"""
 <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:32px">
   <h2 style="margin-bottom:8px">欢迎使用 pi-matrix</h2>
-  <p style="color:#555;margin-bottom:24px">点击下方按钮，完成飞书账号绑定，您的数字员工即刻上线。</p>
+  <p style="color:#555;margin-bottom:24px">点击下方按钮，完成飞书账号绑定，您的爱马仕员工即刻上线。</p>
   <a href="{magic_link}"
      style="display:inline-block;background:#000;color:#fff;text-decoration:none;
             padding:12px 28px;border-radius:8px;font-weight:600">
