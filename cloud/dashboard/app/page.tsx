@@ -119,15 +119,8 @@ export default function HomePage() {
 
       {/* Footer */}
       <footer className="footer">
-        <div className="container footer-inner">
-          <div className="brand">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/logo.svg" alt="pi-matrix" width={22} height={22} />
-            <span className="brand-name" style={{ fontSize: "1rem" }}>
-              pi<span>-matrix</span>
-            </span>
-          </div>
-          <p className="footer-copy">
+        <div className="container">
+          <p className="footer-copy" style={{ textAlign: "center" }}>
             © {new Date().getFullYear()} pi-matrix · Powered by Air7.fun
           </p>
         </div>
