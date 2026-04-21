@@ -7,8 +7,7 @@ from lark_oapi.api.im.v1 import (
     CreateMessageReactionRequest,
     CreateMessageReactionRequestBody,
     DeleteMessageReactionRequest,
-    MessageReaction,
-    EmojiType,
+    Emoji,
     P2ImMessageReceiveV1,
 )
 from config import settings
@@ -53,7 +52,7 @@ def add_reaction(message_id: str, emoji: str = "EYES") -> str | None:
         .message_id(message_id) \
         .request_body(
             CreateMessageReactionRequestBody.builder()
-            .reaction_type(EmojiType.builder().emoji_type(emoji).build())
+            .reaction_type(Emoji.builder().emoji_type(emoji).build())
             .build()
         ).build()
     resp = client.im.v1.message_reaction.create(req)
