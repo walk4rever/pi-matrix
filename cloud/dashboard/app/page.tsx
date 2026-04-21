@@ -1,8 +1,6 @@
 import Link from "next/link";
 import FeishuQRCode from "@/components/FeishuQRCode";
 
-const FEISHU_APPLINK = "https://applink.feishu.cn/T95H55yR3eVb";
-
 export default function HomePage() {
   return (
     <>
@@ -14,9 +12,6 @@ export default function HomePage() {
             <img src="/logo.svg" alt="pi-matrix" width={28} height={28} />
             <span className="brand-name">pi<span>-matrix</span></span>
           </Link>
-          <a href={FEISHU_APPLINK} target="_blank" rel="noreferrer" className="btn-nav">
-            打开飞书开始
-          </a>
         </div>
       </nav>
 
@@ -33,10 +28,8 @@ export default function HomePage() {
               收到注册卡片后点击完成注册与绑定，随后即可开始对话。
             </p>
             <div className="hero-cta">
-              <a href={FEISHU_APPLINK} target="_blank" rel="noreferrer" className="btn-hero">打开飞书 →</a>
               <a href="#how-it-works" className="btn-ghost">查看流程</a>
             </div>
-            <FeishuQRCode />
           </div>
         </section>
 
@@ -48,10 +41,11 @@ export default function HomePage() {
             <div className="steps-grid">
               <div className="step-card">
                 <div className="step-number">01</div>
-                <div className="step-title">打开飞书并找到 Bot</div>
+                <div className="step-title">用手机扫码进入飞书</div>
                 <p className="step-desc">
-                  扫码或点击按钮打开飞书，进入 pi-matrix Bot 会话。
+                  用手机扫码打开飞书，进入 pi-matrix Bot 会话。
                 </p>
+                <FeishuQRCode />
               </div>
               <div className="step-card">
                 <div className="step-number">02</div>
@@ -118,7 +112,6 @@ export default function HomePage() {
           <div className="container">
             <h2 className="dark-cta-title">先在飞书发一条消息，<br />让数字员工开始工作。</h2>
             <p className="dark-cta-sub">从飞书触发注册流程，几分钟内即可上线。</p>
-            <a href={FEISHU_APPLINK} target="_blank" rel="noreferrer" className="btn-hero">打开飞书 →</a>
           </div>
         </section>
       </main>
