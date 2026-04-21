@@ -37,6 +37,7 @@ class ProgressEmitter:
         self._client = httpx.Client(timeout=5)
         self._last_text = ""
         self._last_status_ts = 0.0
+        self._tool_call_name: dict[str, str] = {}
 
     def close(self) -> None:
         try:
@@ -61,20 +62,44 @@ class ProgressEmitter:
         except Exception:
             logger.debug("progress update send failed", exc_info=True)
 
-    @staticmethod
-    def _extract_tool_name(*args, **kwargs) -> str:
+    def _resolve_tool_name(self, raw: str) -> str:
+        if raw in self._tool_call_name:
+            return self._tool_call_name[raw]
+        if raw.startswith("call_"):
+            return "工具调用"
+        return raw
+
+    def _extract_tool_name(self, *args, **kwargs) -> str:
+        # Direct fields
         for key in ("tool_name", "name", "tool"):
             if key in kwargs and kwargs[key]:
-                return str(kwargs[key])
+                return self._resolve_tool_name(str(kwargs[key]))
+
+        # Common nested style: {"function": {"name": "bash"}}
+        obj = kwargs.get("tool_call") or kwargs.get("call")
+        if isinstance(obj, dict):
+            fn = obj.get("function")
+            if isinstance(fn, dict) and fn.get("name"):
+                return str(fn["name"])
+            if obj.get("name"):
+                return str(obj["name"])
+            if obj.get("id"):
+                return self._resolve_tool_name(str(obj["id"]))
+
         if args:
             first = args[0]
             if isinstance(first, str):
-                return first
+                return self._resolve_tool_name(first)
             if isinstance(first, dict):
                 for key in ("tool_name", "name", "tool"):
                     if first.get(key):
-                        return str(first[key])
-        return "工具"
+                        return self._resolve_tool_name(str(first[key]))
+                fn = first.get("function")
+                if isinstance(fn, dict) and fn.get("name"):
+                    return str(fn["name"])
+                if first.get("id"):
+                    return self._resolve_tool_name(str(first["id"]))
+        return "工具调用"
 
     @staticmethod
     def _extract_status_text(*args, **kwargs) -> str:
@@ -102,7 +127,25 @@ class ProgressEmitter:
 
     def status(self, *args, **kwargs) -> None:
         status = self._extract_status_text(*args, **kwargs)
+        if status.strip().lower() in {"lifecycle", "running"}:
+            return
         self._send(f"… {status}", throttle_seconds=2.0)
+
+    def tool_gen(self, *args, **kwargs) -> None:
+        # Best-effort capture of tool_call_id -> function_name mapping
+        candidates = []
+        candidates.extend(args)
+        candidates.extend(v for v in kwargs.values())
+        for item in candidates:
+            if not isinstance(item, list):
+                continue
+            for call in item:
+                if not isinstance(call, dict):
+                    continue
+                call_id = call.get("id")
+                fn = call.get("function")
+                if call_id and isinstance(fn, dict) and fn.get("name"):
+                    self._tool_call_name[str(call_id)] = str(fn["name"])
 
 
 def _session_id_from_open_id(open_id: str) -> str:
@@ -133,6 +176,7 @@ def _run_turn(session_id: str, user_id: str, text: str, open_id: str) -> str:
             persist_session=True,
             tool_start_callback=emitter.tool_start,
             tool_complete_callback=emitter.tool_complete,
+            tool_gen_callback=emitter.tool_gen,
             status_callback=emitter.status,
         )
         history = session_db.get_messages_as_conversation(session_id)
