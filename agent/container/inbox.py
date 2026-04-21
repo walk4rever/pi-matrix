@@ -3,12 +3,14 @@ Thin HTTP wrapper around hermes AIAgent.
 Calls our LiteLLM Gateway — no direct LLM API keys needed in this container.
 """
 import asyncio
+import logging
 import os
 import httpx
-from fastapi import FastAPI
+from fastapi import FastAPI, BackgroundTasks
 from pydantic import BaseModel
 from run_agent import AIAgent
 
+logger = logging.getLogger(__name__)
 app = FastAPI()
 
 ROUTER_REPLY_URL = os.environ["ROUTER_REPLY_URL"]
@@ -26,15 +28,29 @@ agent = AIAgent(
 class InboxMessage(BaseModel):
     open_id: str
     text: str
+    message_id: str | None = None
+    reaction_id: str | None = None
+
+
+async def _process(msg: InboxMessage) -> None:
+    try:
+        loop = asyncio.get_event_loop()
+        result = await loop.run_in_executor(None, agent.run_conversation, msg.text)
+        text = result["final_response"] if isinstance(result, dict) else str(result)
+        payload: dict = {"open_id": msg.open_id, "text": text}
+        if msg.message_id:
+            payload["message_id"] = msg.message_id
+        if msg.reaction_id:
+            payload["reaction_id"] = msg.reaction_id
+        async with httpx.AsyncClient(timeout=60) as client:
+            await client.post(ROUTER_REPLY_URL, json=payload)
+    except Exception:
+        logger.exception("_process failed for open_id=%s", msg.open_id)
 
 
 @app.post("/inbox")
-async def inbox(msg: InboxMessage):
-    loop = asyncio.get_event_loop()
-    result = await loop.run_in_executor(None, agent.run_conversation, msg.text)
-    text = result["final_response"] if isinstance(result, dict) else str(result)
-    async with httpx.AsyncClient(timeout=60) as client:
-        await client.post(ROUTER_REPLY_URL, json={"open_id": msg.open_id, "text": text})
+async def inbox(msg: InboxMessage, background_tasks: BackgroundTasks):
+    background_tasks.add_task(_process, msg)
     return {"ok": True}
 
 

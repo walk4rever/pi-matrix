@@ -10,7 +10,12 @@ from config import settings
 supabase = create_client(settings.supabase_url, settings.supabase_service_key)
 
 
-async def dispatch(open_id: str, text: str) -> None:
+async def dispatch(
+    open_id: str,
+    text: str,
+    message_id: str | None = None,
+    reaction_id: str | None = None,
+) -> None:
     user_id = _resolve_user(open_id)
 
     if user_id is None:
@@ -22,7 +27,7 @@ async def dispatch(open_id: str, text: str) -> None:
         await send_message(open_id, "Your instance is being set up, please try again in a moment.")
         return
 
-    await _deliver(instance["endpoint"], open_id, text)
+    await _deliver(instance["endpoint"], open_id, text, message_id=message_id, reaction_id=reaction_id)
 
 
 def _resolve_user(open_id: str) -> str | None:
@@ -44,9 +49,20 @@ def _resolve_instance(user_id: str) -> dict | None:
     return result.data
 
 
-async def _deliver(endpoint: str, open_id: str, text: str) -> None:
-    async with httpx.AsyncClient(timeout=60) as client:
-        await client.post(endpoint, json={"open_id": open_id, "text": text})
+async def _deliver(
+    endpoint: str,
+    open_id: str,
+    text: str,
+    message_id: str | None = None,
+    reaction_id: str | None = None,
+) -> None:
+    payload = {"open_id": open_id, "text": text}
+    if message_id:
+        payload["message_id"] = message_id
+    if reaction_id:
+        payload["reaction_id"] = reaction_id
+    async with httpx.AsyncClient(timeout=10) as client:
+        await client.post(endpoint, json=payload)
 
 
 async def _handle_unbound(open_id: str, text: str) -> None:

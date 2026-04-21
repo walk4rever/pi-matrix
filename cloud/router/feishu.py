@@ -4,6 +4,11 @@ import lark_oapi as lark
 from lark_oapi.api.im.v1 import (
     CreateMessageRequest,
     CreateMessageRequestBody,
+    CreateMessageReactionRequest,
+    CreateMessageReactionRequestBody,
+    DeleteMessageReactionRequest,
+    MessageReaction,
+    EmojiType,
     P2ImMessageReceiveV1,
 )
 from config import settings
@@ -40,6 +45,32 @@ async def send_message(open_id: str, text: str) -> None:
     resp = client.im.v1.message.create(req)
     if not resp.success():
         logger.error("send_message failed: code=%s msg=%s", resp.code, resp.msg)
+
+
+def add_reaction(message_id: str, emoji: str = "EYES") -> str | None:
+    """Add an emoji reaction to a message. Returns reaction_id or None on failure."""
+    req = CreateMessageReactionRequest.builder() \
+        .message_id(message_id) \
+        .request_body(
+            CreateMessageReactionRequestBody.builder()
+            .reaction_type(EmojiType.builder().emoji_type(emoji).build())
+            .build()
+        ).build()
+    resp = client.im.v1.message_reaction.create(req)
+    if not resp.success():
+        logger.error("add_reaction failed: code=%s msg=%s", resp.code, resp.msg)
+        return None
+    return resp.data.reaction_id if resp.data else None
+
+
+def remove_reaction(message_id: str, reaction_id: str) -> None:
+    req = DeleteMessageReactionRequest.builder() \
+        .message_id(message_id) \
+        .reaction_id(reaction_id) \
+        .build()
+    resp = client.im.v1.message_reaction.delete(req)
+    if not resp.success():
+        logger.error("remove_reaction failed: code=%s msg=%s", resp.code, resp.msg)
 
 
 def build_ws_client(on_message) -> lark.ws.Client:
