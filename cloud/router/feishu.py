@@ -73,7 +73,8 @@ def _build_card_elements(text: str) -> list[dict]:
                 {
                     "name": f"col_{idx}",
                     "display_name": header or f"列{idx+1}",
-                    "data_type": "text",
+                    "data_type": "lark_md",
+                    "width": "auto",
                 }
                 for idx, header in enumerate(headers)
             ]
@@ -89,6 +90,8 @@ def _build_card_elements(text: str) -> list[dict]:
             elements.append(
                 {
                     "tag": "table",
+                    "row_height": "auto",
+                    "row_max_height": "220px",
                     "columns": columns,
                     "rows": table_rows,
                 }
