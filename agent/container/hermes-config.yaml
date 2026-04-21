@@ -1,0 +1,32 @@
+agent:
+  max_turns: 20
+  gateway_timeout: 300
+  reasoning_effort: medium
+
+approvals:
+  mode: auto
+
+skills:
+  external_dirs:
+    - /opt/hermes/skills
+
+memory:
+  memory_enabled: true
+  user_profile_enabled: true
+
+compression:
+  enabled: true
+  threshold: 0.5
+  protect_last_n: 10
+
+session_reset:
+  mode: both
+  idle_minutes: 1440
+
+display:
+  compact: true
+  personality: helpful
+  streaming: false
+
+logging:
+  level: WARNING

@@ -12,6 +12,11 @@ RUN git clone --depth=1 https://github.com/NousResearch/hermes-agent.git /opt/he
 WORKDIR /app
 COPY inbox.py .
 
+# Hermes user config: skills, SOUL, config
+RUN mkdir -p /root/.hermes
+COPY hermes-config.yaml /root/.hermes/config.yaml
+COPY SOUL.md /root/.hermes/SOUL.md
+
 ENV HERMES_MODEL=default
 ENV ROUTER_REPLY_URL=""
 
