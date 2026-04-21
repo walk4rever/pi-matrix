@@ -16,15 +16,12 @@ function BindForm() {
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, s) => {
-      if (event === "INITIAL_SESSION" || event === "SIGNED_IN") {
-        setSession(s);
-        if (s === null) {
-          router.replace(`/register?open_id=${encodeURIComponent(openId)}`);
-        }
+      if (event === "SIGNED_IN" || event === "INITIAL_SESSION") {
+        setSession(s ?? null);
       }
     });
     return () => subscription.unsubscribe();
-  }, [openId, router]);
+  }, []);
 
   async function handleBind() {
     if (!openId) {
@@ -32,7 +29,11 @@ function BindForm() {
       setStatus("error");
       return;
     }
-    if (!session) return;
+    if (!session) {
+      setMessage("登录已过期，请重新点击邮件中的链接。");
+      setStatus("error");
+      return;
+    }
 
     setStatus("loading");
     const apiBase = process.env.NEXT_PUBLIC_API_URL ?? "https://relay.air7.fun/pm/api";
@@ -53,15 +54,6 @@ function BindForm() {
       setMessage(body.detail ?? "绑定失败，请重试。");
       setStatus("error");
     }
-  }
-
-  // Still waiting for auth state
-  if (session === undefined) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <p className="text-gray-400">验证中...</p>
-      </div>
-    );
   }
 
   return (
