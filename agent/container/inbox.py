@@ -25,6 +25,7 @@ GATEWAY_URL = os.environ["GATEWAY_URL"]            # http://gateway:4000/v1
 GATEWAY_KEY = os.environ["GATEWAY_KEY"]            # litellm master key
 HERMES_MODEL = os.environ.get("HERMES_MODEL", "default")
 HERMES_STATE_DB_PATH = Path(os.environ.get("HERMES_STATE_DB_PATH", "/root/.hermes/state/state.db"))
+HERMES_ENABLED_TOOLSETS = ["hermes-feishu"]
 
 session_db = SessionDB(db_path=HERMES_STATE_DB_PATH)
 _session_locks: dict[str, asyncio.Lock] = {}
@@ -178,6 +179,7 @@ def _run_turn(session_id: str, user_id: str, text: str, open_id: str) -> str:
             platform="feishu",
             user_id=user_id,
             persist_session=True,
+            enabled_toolsets=HERMES_ENABLED_TOOLSETS,
             tool_start_callback=emitter.tool_start,
             tool_complete_callback=emitter.tool_complete,
             tool_gen_callback=emitter.tool_gen,

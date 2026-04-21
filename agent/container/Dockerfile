@@ -4,7 +4,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends git && \
     rm -rf /var/lib/apt/lists/*
 
 RUN git clone --depth=1 https://github.com/NousResearch/hermes-agent.git /opt/hermes && \
-    pip install --no-cache-dir /opt/hermes \
+    pip install --no-cache-dir "/opt/hermes[all]" \
     "fastapi>=0.111.0" \
     "uvicorn[standard]>=0.29.0" \
     "httpx>=0.27.0"
