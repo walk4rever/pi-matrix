@@ -16,9 +16,17 @@ client = lark.Client.builder() \
     .build()
 
 
+def _feishu_markdown(text: str) -> str:
+    """Convert unsupported markdown to Feishu card markdown."""
+    import re
+    # ### heading → **heading**
+    text = re.sub(r'^#{1,6}\s+(.+)$', r'**\1**', text, flags=re.MULTILINE)
+    return text
+
+
 async def send_message(open_id: str, text: str) -> None:
     card = {
-        "elements": [{"tag": "markdown", "content": text}]
+        "elements": [{"tag": "markdown", "content": _feishu_markdown(text)}]
     }
     req = CreateMessageRequest.builder() \
         .receive_id_type("open_id") \
