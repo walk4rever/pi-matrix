@@ -29,7 +29,19 @@ def bind_feishu(body: BindRequest, user: dict = Depends(get_current_user)):
     }).execute()
 
     _provision(user["sub"])
+    _welcome(body.open_id)
     return {"ok": True}
+
+
+def _welcome(open_id: str) -> None:
+    try:
+        with httpx.Client(timeout=10) as client:
+            client.post(
+                f"{settings.router_reply_url}",
+                json={"open_id": open_id, "text": "🎉 绑定成功！您的数字员工已上线，直接发消息开始对话吧。"},
+            )
+    except Exception:
+        pass  # non-critical
 
 
 def _provision(user_id: str) -> None:
