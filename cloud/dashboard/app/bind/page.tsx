@@ -15,11 +15,12 @@ function BindForm() {
   const [message, setMessage] = useState("");
 
   useEffect(() => {
-    // onAuthStateChange handles hash tokens from magic link automatically
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, s) => {
-      setSession(s);
-      if (s === null) {
-        router.replace(`/register?open_id=${encodeURIComponent(openId)}`);
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, s) => {
+      if (event === "INITIAL_SESSION" || event === "SIGNED_IN") {
+        setSession(s);
+        if (s === null) {
+          router.replace(`/register?open_id=${encodeURIComponent(openId)}`);
+        }
       }
     });
     return () => subscription.unsubscribe();
