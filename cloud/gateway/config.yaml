@@ -1,13 +1,13 @@
 model_list:
   - model_name: default
     litellm_params:
-      model: openai/os.environ/AI_PRIMARY_MODEL
+      model: openai/${AI_PRIMARY_MODEL}
       api_base: os.environ/AI_API_BASE_URL
       api_key: os.environ/AI_API_KEY
 
   - model_name: vision
     litellm_params:
-      model: openai/os.environ/AI_VISION_MODEL
+      model: openai/${AI_VISION_MODEL}
       api_base: os.environ/AI_API_BASE_URL
       api_key: os.environ/AI_API_KEY
 
