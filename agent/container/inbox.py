@@ -75,6 +75,10 @@ class ProgressEmitter:
             if key in kwargs and kwargs[key]:
                 return self._resolve_tool_name(str(kwargs[key]))
 
+        # Common callback signature in Hermes: (tool_call_id, function_name, function_args, ...)
+        if len(args) >= 2 and isinstance(args[1], str) and args[1].strip():
+            return args[1]
+
         # Common nested style: {"function": {"name": "bash"}}
         obj = kwargs.get("tool_call") or kwargs.get("call")
         if isinstance(obj, dict):
