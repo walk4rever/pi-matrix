@@ -6,3 +6,7 @@ node_modules/
 .DS_Store
 deploy/.env
 **/.env.vercel
+
+# Build artifacts
+**/.next/
+**/*.tsbuildinfo
