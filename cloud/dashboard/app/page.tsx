@@ -19,7 +19,7 @@ export default function HomePage() {
         {/* Hero */}
         <section className="hero">
           <div className="container">
-            <p className="hero-overline">AI Digital Employee · Powered by Hermes</p>
+            <p className="hero-overline">AI Digital Employee · Powered by Air7.fun</p>
             <h1 className="hero-headline">
               您的数字员工，<br />在飞书候命。
             </h1>
@@ -128,7 +128,7 @@ export default function HomePage() {
             </span>
           </div>
           <p className="footer-copy">
-            © {new Date().getFullYear()} pi-matrix · Powered by Hermes Agent
+            © {new Date().getFullYear()} pi-matrix · Powered by Air7.fun
           </p>
         </div>
       </footer>
