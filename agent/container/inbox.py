@@ -176,8 +176,8 @@ class ProgressEmitter:
             self._send(f"🔧 正在执行：{tool}")
 
     def tool_complete(self, *args, **kwargs) -> None:
-        tool = self._extract_tool_name(*args, **kwargs)
-        self._send(f"✅ 已完成：{tool}")
+        # Intentionally no-op to reduce chat noise and extra message round-trips.
+        return
 
     def status(self, *args, **kwargs) -> None:
         status = self._extract_status_text(*args, **kwargs)
