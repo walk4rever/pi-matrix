@@ -293,6 +293,7 @@ body {
   letter-spacing: 0.12em;
   color: var(--claude-terracotta);
   margin-bottom: 1.25rem;
+  text-align: center;
 }
 
 .hero-headline {
@@ -302,7 +303,8 @@ body {
   line-height: 1.15;
   color: var(--claude-near-black);
   max-width: 680px;
-  margin-bottom: 1.5rem;
+  margin: 0 auto 1.5rem;
+  text-align: center;
 }
 
 .hero-sub {
@@ -310,12 +312,14 @@ body {
   color: var(--claude-olive-gray);
   max-width: 560px;
   line-height: 1.7;
-  margin-bottom: 2.5rem;
+  margin: 0 auto 2.5rem;
+  text-align: center;
 }
 
 .hero-cta {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 1.25rem;
 }
 
@@ -384,6 +388,7 @@ body {
   letter-spacing: 0.12em;
   color: var(--claude-terracotta);
   margin-bottom: 0.75rem;
+  text-align: center;
 }
 
 .section-title {
@@ -393,6 +398,7 @@ body {
   line-height: 1.2;
   color: var(--claude-near-black);
   margin-bottom: 3.5rem;
+  text-align: center;
 }
 
 .steps-grid {
@@ -407,6 +413,7 @@ body {
   border-radius: 16px;
   padding: 2rem;
   box-shadow: rgba(0,0,0,0.03) 0px 2px 16px;
+  text-align: center;
 }
 
 .step-number {
@@ -451,6 +458,7 @@ body {
   border-radius: 16px;
   padding: 2rem;
   transition: box-shadow 0.2s;
+  text-align: center;
 }
 
 .feature-card:hover {
