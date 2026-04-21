@@ -46,7 +46,7 @@ async def send_message(open_id: str, text: str) -> None:
         logger.error("send_message failed: code=%s msg=%s", resp.code, resp.msg)
 
 
-def add_reaction(message_id: str, emoji: str = "Eyes") -> str | None:
+def add_reaction(message_id: str, emoji: str = "THUMBSUP") -> str | None:
     """Add an emoji reaction to a message. Returns reaction_id or None on failure."""
     req = CreateMessageReactionRequest.builder() \
         .message_id(message_id) \
@@ -57,8 +57,9 @@ def add_reaction(message_id: str, emoji: str = "Eyes") -> str | None:
         ).build()
     resp = client.im.v1.message_reaction.create(req)
     if not resp.success():
-        logger.error("add_reaction failed: code=%s msg=%s", resp.code, resp.msg)
+        logger.error("add_reaction failed: code=%s msg=%s request_id=%s", resp.code, resp.msg, resp.request_id)
         return None
+    logger.info("add_reaction ok: reaction_id=%s", resp.data.reaction_id if resp.data else None)
     return resp.data.reaction_id if resp.data else None
 
 
