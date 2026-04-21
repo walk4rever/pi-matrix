@@ -25,27 +25,39 @@ def _parse_table_row(line: str) -> list[str]:
     return [c for c in cells if c != ""]
 
 
-def _convert_markdown_tables(text: str) -> str:
-    """Convert markdown tables to Feishu-friendly bullet lists."""
+def _normalize_markdown(text: str) -> str:
+    """Convert unsupported markdown to Feishu card markdown."""
+    import re
+    # ### heading → **heading**
+    return re.sub(r'^#{1,6}\s+(.+)$', r'**\1**', text, flags=re.MULTILINE)
+
+
+def _build_card_elements(text: str) -> list[dict]:
+    """Render markdown tables as Feishu div fields for stable display."""
     import re
 
     sep_re = re.compile(r"^\s*\|?(?:\s*:?-{3,}:?\s*\|)+\s*:?-{3,}:?\s*\|?\s*$")
     lines = text.splitlines()
-    out: list[str] = []
+    elements: list[dict] = []
+    pending_text: list[str] = []
     i = 0
 
+    def flush_text() -> None:
+        nonlocal pending_text
+        content = _normalize_markdown("\n".join(pending_text)).strip()
+        if content:
+            elements.append({"tag": "markdown", "content": content})
+        pending_text = []
+
     while i < len(lines):
-        if (
-            i + 1 < len(lines)
-            and "|" in lines[i]
-            and sep_re.match(lines[i + 1] or "")
-        ):
+        if i + 1 < len(lines) and "|" in lines[i] and sep_re.match(lines[i + 1] or ""):
             headers = _parse_table_row(lines[i])
             if not headers:
-                out.append(lines[i])
+                pending_text.append(lines[i])
                 i += 1
                 continue
 
+            flush_text()
             i += 2
             rows: list[list[str]] = []
             while i < len(lines) and "|" in lines[i]:
@@ -55,32 +67,34 @@ def _convert_markdown_tables(text: str) -> str:
                 i += 1
 
             for row in rows:
-                first_header = headers[0]
-                first_value = row[0] if len(row) > 0 else ""
-                out.append(f"- **{first_header}**：{first_value}")
-                for col in range(1, min(len(headers), len(row))):
-                    out.append(f"  - {headers[col]}：{row[col]}")
+                fields = []
+                for col, header in enumerate(headers):
+                    value = row[col] if col < len(row) else ""
+                    fields.append(
+                        {
+                            "is_short": len(headers) <= 2,
+                            "text": {
+                                "tag": "lark_md",
+                                "content": f"**{header}**\n{value or '-'}",
+                            },
+                        }
+                    )
+                elements.append({"tag": "div", "fields": fields})
             continue
 
-        out.append(lines[i])
+        pending_text.append(lines[i])
         i += 1
 
-    return "\n".join(out)
-
-
-def _feishu_markdown(text: str) -> str:
-    """Convert unsupported markdown to Feishu card markdown."""
-    import re
-    # ### heading → **heading**
-    text = re.sub(r'^#{1,6}\s+(.+)$', r'**\1**', text, flags=re.MULTILINE)
-    # Markdown table → list (Feishu markdown has weak table support)
-    text = _convert_markdown_tables(text)
-    return text
+    flush_text()
+    if not elements:
+        elements.append({"tag": "markdown", "content": _normalize_markdown(text)})
+    return elements
 
 
 async def send_message(open_id: str, text: str) -> None:
     card = {
-        "elements": [{"tag": "markdown", "content": _feishu_markdown(text)}]
+        "config": {"wide_screen_mode": True},
+        "elements": _build_card_elements(text),
     }
     req = CreateMessageRequest.builder() \
         .receive_id_type("open_id") \
