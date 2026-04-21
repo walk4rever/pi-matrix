@@ -20,7 +20,7 @@ class BindRequest(BaseModel):
 def bind_feishu(body: BindRequest, user: dict = Depends(get_current_user)):
     existing = supabase.table("pi_matrix_feishu_bindings") \
         .select("id").eq("open_id", body.open_id).maybe_single().execute()
-    if existing.data:
+    if existing and existing.data:
         raise HTTPException(status_code=409, detail="This Feishu account is already linked.")
 
     supabase.table("pi_matrix_feishu_bindings").insert({
