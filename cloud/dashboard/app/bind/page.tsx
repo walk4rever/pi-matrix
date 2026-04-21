@@ -3,19 +3,26 @@
 import { useState, useEffect, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
+import type { Session } from "@supabase/supabase-js";
 
 function BindForm() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const openId = searchParams.get("open_id") ?? "";
 
+  const [session, setSession] = useState<Session | null | undefined>(undefined);
   const [status, setStatus] = useState<"idle" | "loading" | "done" | "error">("idle");
   const [message, setMessage] = useState("");
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      if (!data.session) router.replace(`/register?open_id=${encodeURIComponent(openId)}`);
+    // onAuthStateChange handles hash tokens from magic link automatically
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, s) => {
+      setSession(s);
+      if (s === null) {
+        router.replace(`/register?open_id=${encodeURIComponent(openId)}`);
+      }
     });
+    return () => subscription.unsubscribe();
   }, [openId, router]);
 
   async function handleBind() {
@@ -24,15 +31,10 @@ function BindForm() {
       setStatus("error");
       return;
     }
+    if (!session) return;
 
     setStatus("loading");
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      router.replace(`/register?open_id=${encodeURIComponent(openId)}`);
-      return;
-    }
-
-    const apiBase = process.env.NEXT_PUBLIC_API_URL ?? "/pm/api";
+    const apiBase = process.env.NEXT_PUBLIC_API_URL ?? "https://relay.air7.fun/pm/api";
     const res = await fetch(`${apiBase}/feishu/bind`, {
       method: "POST",
       headers: {
@@ -50,6 +52,15 @@ function BindForm() {
       setMessage(body.detail ?? "绑定失败，请重试。");
       setStatus("error");
     }
+  }
+
+  // Still waiting for auth state
+  if (session === undefined) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <p className="text-gray-400">验证中...</p>
+      </div>
+    );
   }
 
   return (
