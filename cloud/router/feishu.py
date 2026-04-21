@@ -46,31 +46,37 @@ async def send_message(open_id: str, text: str) -> None:
         logger.error("send_message failed: code=%s msg=%s", resp.code, resp.msg)
 
 
-def add_reaction(message_id: str, emoji: str = "Thinking") -> str | None:
+def add_reaction(message_id: str, emoji: str = "THUMBSUP") -> str | None:
     """Add an emoji reaction to a message. Returns reaction_id or None on failure."""
-    req = CreateMessageReactionRequest.builder() \
-        .message_id(message_id) \
-        .request_body(
-            CreateMessageReactionRequestBody.builder()
-            .reaction_type(Emoji.builder().emoji_type(emoji).build())
-            .build()
-        ).build()
-    resp = client.im.v1.message_reaction.create(req)
-    if not resp.success():
-        logger.error("add_reaction failed: code=%s msg=%s request_id=%s", resp.code, resp.msg, resp.request_id)
+    try:
+        req = CreateMessageReactionRequest.builder() \
+            .message_id(message_id) \
+            .request_body(
+                CreateMessageReactionRequestBody.builder()
+                .reaction_type(Emoji.builder().emoji_type(emoji).build())
+                .build()
+            ).build()
+        resp = client.im.v1.message_reaction.create(req)
+        if not resp.success():
+            logger.error("add_reaction failed: code=%s msg=%s", resp.code, resp.msg)
+            return None
+        return resp.data.reaction_id if resp.data else None
+    except Exception:
+        logger.exception("add_reaction exception")
         return None
-    logger.info("add_reaction ok: reaction_id=%s", resp.data.reaction_id if resp.data else None)
-    return resp.data.reaction_id if resp.data else None
 
 
 def remove_reaction(message_id: str, reaction_id: str) -> None:
-    req = DeleteMessageReactionRequest.builder() \
-        .message_id(message_id) \
-        .reaction_id(reaction_id) \
-        .build()
-    resp = client.im.v1.message_reaction.delete(req)
-    if not resp.success():
-        logger.error("remove_reaction failed: code=%s msg=%s", resp.code, resp.msg)
+    try:
+        req = DeleteMessageReactionRequest.builder() \
+            .message_id(message_id) \
+            .reaction_id(reaction_id) \
+            .build()
+        resp = client.im.v1.message_reaction.delete(req)
+        if not resp.success():
+            logger.error("remove_reaction failed: code=%s msg=%s", resp.code, resp.msg)
+    except Exception:
+        logger.exception("remove_reaction exception")
 
 
 def build_ws_client(on_message) -> lark.ws.Client:
