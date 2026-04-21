@@ -55,8 +55,12 @@ function RegisterForm() {
     <div className="auth-page">
       <div className="auth-card">
         <div className="auth-card-header">
-          <div className="display-serif">
-            pi<span className="text-accent">-matrix</span>
+          <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", marginBottom: "0.4rem" }}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/logo.svg" alt="pi-matrix logo" width={36} height={36} />
+            <div className="display-serif" style={{ fontSize: "1.6rem" }}>
+              pi<span className="text-accent">-matrix</span>
+            </div>
           </div>
           <p className="auth-card-subtitle">您的专属数字员工，注册后即刻上线。</p>
         </div>
