@@ -79,6 +79,39 @@ def remove_reaction(message_id: str, reaction_id: str) -> None:
         logger.exception("remove_reaction exception")
 
 
+async def send_registration_card(open_id: str, register_url: str) -> None:
+    card = {
+        "config": {"wide_screen_mode": True},
+        "elements": [
+            {
+                "tag": "markdown",
+                "content": "👋 欢迎使用 **pi-matrix**\n\n您的专属数字员工正在等待，注册后即刻上线。"
+            },
+            {
+                "tag": "action",
+                "actions": [{
+                    "tag": "button",
+                    "text": {"tag": "plain_text", "content": "立即注册 →"},
+                    "type": "primary",
+                    "url": register_url,
+                }]
+            }
+        ]
+    }
+    req = CreateMessageRequest.builder() \
+        .receive_id_type("open_id") \
+        .request_body(
+            CreateMessageRequestBody.builder()
+            .receive_id(open_id)
+            .msg_type("interactive")
+            .content(json.dumps(card))
+            .build()
+        ).build()
+    resp = client.im.v1.message.create(req)
+    if not resp.success():
+        logger.error("send_registration_card failed: code=%s msg=%s", resp.code, resp.msg)
+
+
 def build_ws_client(on_message) -> lark.ws.Client:
     handler = lark.EventDispatcherHandler.builder(
         settings.feishu_encrypt_key,

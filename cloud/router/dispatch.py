@@ -4,7 +4,7 @@ On first message from an unbound open_id, prompt user to link their account.
 """
 import httpx
 from supabase import create_client
-from feishu import send_message
+from feishu import send_message, send_registration_card
 from config import settings
 
 supabase = create_client(settings.supabase_url, settings.supabase_service_key)
@@ -66,7 +66,5 @@ async def _deliver(
 
 
 async def _handle_unbound(open_id: str, text: str) -> None:
-    await send_message(
-        open_id,
-        f"欢迎使用 pi-matrix！点击注册您的数字员工：{settings.dashboard_url}/register?open_id={open_id}"
-    )
+    register_url = f"{settings.dashboard_url}/register?open_id={open_id}"
+    await send_registration_card(open_id, register_url)
