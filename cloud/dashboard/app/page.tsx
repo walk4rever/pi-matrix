@@ -1,6 +1,8 @@
 import Link from "next/link";
 import FeishuQRCode from "@/components/FeishuQRCode";
 
+const FEISHU_APPLINK = "https://applink.feishu.cn/T95H55yR3eVb";
+
 export default function HomePage() {
   return (
     <>
@@ -12,7 +14,9 @@ export default function HomePage() {
             <img src="/logo.svg" alt="pi-matrix" width={28} height={28} />
             <span className="brand-name">pi<span>-matrix</span></span>
           </Link>
-          <Link href="/register" className="btn-nav">立即注册</Link>
+          <a href={FEISHU_APPLINK} target="_blank" rel="noreferrer" className="btn-nav">
+            打开飞书开始
+          </a>
         </div>
       </nav>
 
@@ -25,12 +29,12 @@ export default function HomePage() {
               您的数字员工，<br />在飞书候命。
             </h1>
             <p className="hero-sub">
-              pi-matrix 为每位用户分配专属 AI 容器，直接在飞书对话，
-              无需任何配置，注册即上线。
+              先在飞书找到 pi-matrix Bot 并发送一条消息，
+              收到注册卡片后点击完成注册与绑定，随后即可开始对话。
             </p>
             <div className="hero-cta">
-              <Link href="/register" className="btn-hero">免费注册 →</Link>
-              <a href="#how-it-works" className="btn-ghost">了解流程</a>
+              <a href={FEISHU_APPLINK} target="_blank" rel="noreferrer" className="btn-hero">打开飞书 →</a>
+              <a href="#how-it-works" className="btn-ghost">查看流程</a>
             </div>
             <FeishuQRCode />
           </div>
@@ -39,28 +43,28 @@ export default function HomePage() {
         {/* How it works */}
         <section className="steps-section" id="how-it-works">
           <div className="container">
-            <p className="section-overline">三步上线</p>
-            <h2 className="section-title">从注册到对话，三步完成。</h2>
+            <p className="section-overline">三步开始</p>
+            <h2 className="section-title">先在飞书触发，再完成注册绑定。</h2>
             <div className="steps-grid">
               <div className="step-card">
                 <div className="step-number">01</div>
-                <div className="step-title">注册账号</div>
+                <div className="step-title">打开飞书并找到 Bot</div>
                 <p className="step-desc">
-                  填写邮箱和密码，系统立即发送绑定邮件并为您预热专属 AI 容器。
+                  扫码或点击按钮打开飞书，进入 pi-matrix Bot 会话。
                 </p>
               </div>
               <div className="step-card">
                 <div className="step-number">02</div>
-                <div className="step-title">绑定飞书</div>
+                <div className="step-title">发送消息获取注册卡</div>
                 <p className="step-desc">
-                  点击邮件中的链接，浏览器自动完成飞书账号绑定，无需手动操作。
+                  给 Bot 发送任意消息，系统会自动返回专属注册卡片。
                 </p>
               </div>
               <div className="step-card">
                 <div className="step-number">03</div>
-                <div className="step-title">开始对话</div>
+                <div className="step-title">点击卡片完成绑定</div>
                 <p className="step-desc">
-                  回到飞书直接发消息，您的数字员工即刻响应，随时待命。
+                  在卡片中完成注册与绑定，成功后回飞书直接开始对话。
                 </p>
               </div>
             </div>
@@ -112,9 +116,9 @@ export default function HomePage() {
         {/* Dark CTA */}
         <section className="dark-cta">
           <div className="container">
-            <h2 className="dark-cta-title">现在就给自己配一位<br />不下班的数字员工。</h2>
-            <p className="dark-cta-sub">免费注册，三分钟内上线。</p>
-            <Link href="/register" className="btn-hero">免费注册 →</Link>
+            <h2 className="dark-cta-title">先在飞书发一条消息，<br />让数字员工开始工作。</h2>
+            <p className="dark-cta-sub">从飞书触发注册流程，几分钟内即可上线。</p>
+            <a href={FEISHU_APPLINK} target="_blank" rel="noreferrer" className="btn-hero">打开飞书 →</a>
           </div>
         </section>
       </main>
