@@ -3,11 +3,14 @@ Thin HTTP wrapper around hermes AIAgent.
 Calls our LiteLLM Gateway — no direct LLM API keys needed in this container.
 
 Uses Hermes native session persistence (SessionDB) keyed by Feishu open_id.
+Also forwards Hermes tool/status progress updates back to Feishu.
 """
 import asyncio
 import logging
 import os
+import time
 from pathlib import Path
+
 import httpx
 from fastapi import FastAPI, BackgroundTasks
 from pydantic import BaseModel
@@ -18,14 +21,88 @@ logger = logging.getLogger(__name__)
 app = FastAPI()
 
 ROUTER_REPLY_URL = os.environ["ROUTER_REPLY_URL"]
-GATEWAY_URL      = os.environ["GATEWAY_URL"]       # http://gateway:4000/v1
-GATEWAY_KEY      = os.environ["GATEWAY_KEY"]       # litellm master key
-HERMES_MODEL     = os.environ.get("HERMES_MODEL", "default")
+GATEWAY_URL = os.environ["GATEWAY_URL"]            # http://gateway:4000/v1
+GATEWAY_KEY = os.environ["GATEWAY_KEY"]            # litellm master key
+HERMES_MODEL = os.environ.get("HERMES_MODEL", "default")
 HERMES_STATE_DB_PATH = Path(os.environ.get("HERMES_STATE_DB_PATH", "/root/.hermes/state/state.db"))
 
 session_db = SessionDB(db_path=HERMES_STATE_DB_PATH)
 _session_locks: dict[str, asyncio.Lock] = {}
 _session_locks_guard = asyncio.Lock()
+
+
+class ProgressEmitter:
+    def __init__(self, open_id: str):
+        self.open_id = open_id
+        self._client = httpx.Client(timeout=5)
+        self._last_text = ""
+        self._last_status_ts = 0.0
+
+    def close(self) -> None:
+        try:
+            self._client.close()
+        except Exception:
+            pass
+
+    def _send(self, text: str, *, throttle_seconds: float = 0.0) -> None:
+        text = (text or "").strip()
+        if not text:
+            return
+        now = time.time()
+        if throttle_seconds > 0 and (now - self._last_status_ts) < throttle_seconds:
+            return
+        if text == self._last_text:
+            return
+
+        self._last_text = text
+        self._last_status_ts = now
+        try:
+            self._client.post(ROUTER_REPLY_URL, json={"open_id": self.open_id, "text": text})
+        except Exception:
+            logger.debug("progress update send failed", exc_info=True)
+
+    @staticmethod
+    def _extract_tool_name(*args, **kwargs) -> str:
+        for key in ("tool_name", "name", "tool"):
+            if key in kwargs and kwargs[key]:
+                return str(kwargs[key])
+        if args:
+            first = args[0]
+            if isinstance(first, str):
+                return first
+            if isinstance(first, dict):
+                for key in ("tool_name", "name", "tool"):
+                    if first.get(key):
+                        return str(first[key])
+        return "工具"
+
+    @staticmethod
+    def _extract_status_text(*args, **kwargs) -> str:
+        for key in ("status", "message", "text"):
+            if key in kwargs and kwargs[key]:
+                return str(kwargs[key])
+        if args:
+            first = args[0]
+            if isinstance(first, str):
+                return first
+            if isinstance(first, dict):
+                for key in ("status", "message", "text"):
+                    if first.get(key):
+                        return str(first[key])
+        return "处理中..."
+
+    # Hermes callbacks (accept flexible signatures)
+    def tool_start(self, *args, **kwargs) -> None:
+        tool = self._extract_tool_name(*args, **kwargs)
+        self._send(f"🔧 正在执行：{tool}")
+
+    def tool_complete(self, *args, **kwargs) -> None:
+        tool = self._extract_tool_name(*args, **kwargs)
+        self._send(f"✅ 已完成：{tool}")
+
+    def status(self, *args, **kwargs) -> None:
+        status = self._extract_status_text(*args, **kwargs)
+        self._send(f"… {status}", throttle_seconds=2.0)
 
 
 def _session_id_from_open_id(open_id: str) -> str:
@@ -41,21 +118,28 @@ async def _get_session_lock(session_id: str) -> asyncio.Lock:
         return lock
 
 
-def _run_turn(session_id: str, user_id: str, text: str) -> str:
-    # Gateway pattern: fresh agent per turn + replay persisted conversation.
-    agent = AIAgent(
-        model=HERMES_MODEL,
-        base_url=GATEWAY_URL,
-        api_key=GATEWAY_KEY,
-        session_id=session_id,
-        session_db=session_db,
-        platform="feishu",
-        user_id=user_id,
-        persist_session=True,
-    )
-    history = session_db.get_messages_as_conversation(session_id)
-    result = agent.run_conversation(text, conversation_history=history)
-    return result["final_response"] if isinstance(result, dict) else str(result)
+def _run_turn(session_id: str, user_id: str, text: str, open_id: str) -> str:
+    emitter = ProgressEmitter(open_id)
+    try:
+        # Gateway pattern: fresh agent per turn + replay persisted conversation.
+        agent = AIAgent(
+            model=HERMES_MODEL,
+            base_url=GATEWAY_URL,
+            api_key=GATEWAY_KEY,
+            session_id=session_id,
+            session_db=session_db,
+            platform="feishu",
+            user_id=user_id,
+            persist_session=True,
+            tool_start_callback=emitter.tool_start,
+            tool_complete_callback=emitter.tool_complete,
+            status_callback=emitter.status,
+        )
+        history = session_db.get_messages_as_conversation(session_id)
+        result = agent.run_conversation(text, conversation_history=history)
+        return result["final_response"] if isinstance(result, dict) else str(result)
+    finally:
+        emitter.close()
 
 
 class InboxMessage(BaseModel):
@@ -71,12 +155,14 @@ async def _process(msg: InboxMessage) -> None:
     try:
         async with session_lock:
             loop = asyncio.get_event_loop()
-            text = await loop.run_in_executor(None, _run_turn, session_id, msg.open_id, msg.text)
+            text = await loop.run_in_executor(None, _run_turn, session_id, msg.open_id, msg.text, msg.open_id)
+
         payload: dict = {"open_id": msg.open_id, "text": text}
         if msg.message_id:
             payload["message_id"] = msg.message_id
         if msg.reaction_id:
             payload["reaction_id"] = msg.reaction_id
+
         async with httpx.AsyncClient(timeout=60) as client:
             await client.post(ROUTER_REPLY_URL, json=payload)
     except Exception:
