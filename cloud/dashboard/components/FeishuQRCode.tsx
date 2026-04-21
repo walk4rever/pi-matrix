@@ -20,7 +20,6 @@ export default function FeishuQRCode() {
   return (
     <div className="qr-wrap">
       <canvas ref={canvasRef} />
-      <p className="qr-label">打开飞书扫码，给 Bot 发消息后获取注册卡</p>
     </div>
   );
 }
