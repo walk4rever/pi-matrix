@@ -15,7 +15,7 @@ def provision(user_id: str) -> str:
     # Remove existing container if present (re-provision case)
     _remove_if_exists(name)
 
-    container = _docker.containers.run(
+    _docker.containers.run(
         settings.docker_image,
         name=name,
         detach=True,
@@ -30,9 +30,7 @@ def provision(user_id: str) -> str:
         labels={"pi-matrix.user_id": user_id},
     )
 
-    container.reload()
-    ip = container.attrs["NetworkSettings"]["Networks"]["pi-matrix"]["IPAddress"]
-    return f"http://{ip}:{settings.container_port}"
+    return f"http://{name}:{settings.container_port}"
 
 
 def deprovision(user_id: str) -> None:
