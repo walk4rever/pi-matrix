@@ -91,7 +91,6 @@ def _build_card_elements(text: str) -> list[dict]:
                 {
                     "tag": "table",
                     "row_height": "auto",
-                    "row_max_height": "220px",
                     "columns": columns,
                     "rows": table_rows,
                 }
