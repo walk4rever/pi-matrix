@@ -33,7 +33,7 @@ def _normalize_markdown(text: str) -> str:
 
 
 def _build_card_elements(text: str) -> list[dict]:
-    """Render markdown tables as Feishu div fields for stable display."""
+    """Render markdown tables as Feishu Card JSON 2.0 table components."""
     import re
 
     sep_re = re.compile(r"^\s*\|?(?:\s*:?-{3,}:?\s*\|)+\s*:?-{3,}:?\s*\|?\s*$")
@@ -66,21 +66,30 @@ def _build_card_elements(text: str) -> list[dict]:
                     rows.append(row)
                 i += 1
 
-            table_headers = [
-                {"text": {"content": h or "-"}}
-                for h in headers
+            if not headers or not rows:
+                continue
+
+            columns = [
+                {
+                    "name": f"col_{idx}",
+                    "display_name": header or f"列{idx+1}",
+                    "data_type": "text",
+                }
+                for idx, header in enumerate(headers)
             ]
+
             table_rows = []
             for row in rows:
-                table_rows.append([
-                    {"text": {"content": (row[col] if col < len(row) and row[col] else "-")}}
-                    for col in range(len(headers))
-                ])
+                item = {}
+                for idx in range(len(headers)):
+                    key = f"col_{idx}"
+                    item[key] = row[idx] if idx < len(row) and row[idx] else "-"
+                table_rows.append(item)
 
             elements.append(
                 {
                     "tag": "table",
-                    "headers": table_headers,
+                    "columns": columns,
                     "rows": table_rows,
                 }
             )
@@ -97,8 +106,11 @@ def _build_card_elements(text: str) -> list[dict]:
 
 async def send_message(open_id: str, text: str) -> None:
     card = {
+        "schema": "2.0",
         "config": {"wide_screen_mode": True},
-        "elements": _build_card_elements(text),
+        "body": {
+            "elements": _build_card_elements(text),
+        },
     }
     req = CreateMessageRequest.builder() \
         .receive_id_type("open_id") \
