@@ -31,9 +31,10 @@ class InboxMessage(BaseModel):
 @app.post("/inbox")
 async def inbox(msg: InboxMessage):
     loop = asyncio.get_event_loop()
-    response = await loop.run_in_executor(None, agent.run_conversation, msg.text)
+    result = await loop.run_in_executor(None, agent.run_conversation, msg.text)
+    text = result["final_response"] if isinstance(result, dict) else str(result)
     async with httpx.AsyncClient(timeout=60) as client:
-        await client.post(ROUTER_REPLY_URL, json={"open_id": msg.open_id, "text": response})
+        await client.post(ROUTER_REPLY_URL, json={"open_id": msg.open_id, "text": text})
     return {"ok": True}
 
 
