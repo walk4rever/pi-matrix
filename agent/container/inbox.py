@@ -409,6 +409,9 @@ def _build_turn_text(session_id: str, msg: "InboxMessage") -> str:
     return "\n\n".join(parts).strip()
 
 
+_MAX_INLINE_FILE_BYTES = 20 * 1024 * 1024  # 20 MB — leave headroom below Feishu's 30 MB limit
+
+
 def _collect_reply_files(reply_text: str) -> list[dict]:
     files: list[dict] = []
     seen: set[str] = set()
@@ -422,6 +425,9 @@ def _collect_reply_files(reply_text: str) -> list[dict]:
         except Exception:
             continue
         if not resolved.is_file() or not _is_within_workspace(resolved):
+            continue
+        if resolved.stat().st_size > _MAX_INLINE_FILE_BYTES:
+            print(f"[inbox] skip large file {resolved.name} ({resolved.stat().st_size} bytes)", flush=True)
             continue
         content = resolved.read_bytes()
         files.append({
