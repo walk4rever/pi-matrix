@@ -1,6 +1,7 @@
 import io
 import json
 import logging
+import httpx
 import lark_oapi as lark
 from lark_oapi.api.im.v1 import (
     CreateFileRequest,
@@ -263,6 +264,104 @@ async def send_registration_card(open_id: str, register_url: str) -> None:
     resp = client.im.v1.message.create(req)
     if not resp.success():
         logger.error("send_registration_card failed: code=%s msg=%s", resp.code, resp.msg)
+
+
+async def send_drive_auth_card(open_id: str, file_name: str, auth_url: str) -> None:
+    """Send a Feishu card prompting the user to authorize Drive access."""
+    card = {
+        "schema": "2.0",
+        "config": {"wide_screen_mode": True},
+        "body": {
+            "elements": [
+                {
+                    "tag": "markdown",
+                    "content": (
+                        f"文件 **{file_name}** 超过飞书消息 30 MB 限制，需上传到飞书云盘。\n\n"
+                        "请点击下方按钮授权，授权后文件将自动上传并发送给您。"
+                    ),
+                },
+                {
+                    "tag": "action",
+                    "actions": [
+                        {
+                            "tag": "button",
+                            "text": {"tag": "plain_text", "content": "授权飞书云盘 →"},
+                            "type": "primary",
+                            "url": auth_url,
+                        }
+                    ],
+                },
+            ]
+        },
+    }
+    req = CreateMessageRequest.builder() \
+        .receive_id_type("open_id") \
+        .request_body(
+            CreateMessageRequestBody.builder()
+            .receive_id(open_id)
+            .msg_type("interactive")
+            .content(json.dumps(card))
+            .build()
+        ).build()
+    resp = client.im.v1.message.create(req)
+    if not resp.success():
+        logger.error("send_drive_auth_card failed: code=%s msg=%s", resp.code, resp.msg)
+
+
+_FEISHU_DRIVE_ROOT_META = "https://open.feishu.cn/open-apis/drive/explorer/v2/root_folder/meta"
+_FEISHU_DRIVE_UPLOAD_ALL = "https://open.feishu.cn/open-apis/drive/v1/files/upload_all"
+_FEISHU_DRIVE_PERMISSION = "https://open.feishu.cn/open-apis/drive/v1/permissions/{token}/public"
+
+
+async def upload_to_user_drive(
+    user_access_token: str,
+    file_name: str,
+    content: bytes,
+) -> str | None:
+    """Upload content to user's Feishu Drive My Space. Returns share URL or None."""
+    headers = {"Authorization": f"Bearer {user_access_token}"}
+    async with httpx.AsyncClient(timeout=120) as hx:
+        # 1. Get root folder token for My Space
+        root_resp = await hx.get(_FEISHU_DRIVE_ROOT_META, headers=headers)
+        root_data = root_resp.json()
+        if root_data.get("code") != 0:
+            logger.error("upload_to_user_drive get_root failed: %s", root_data)
+            return None
+        root_token = root_data.get("data", {}).get("token", "")
+
+        # 2. Upload file to root of My Space
+        upload_resp = await hx.post(
+            _FEISHU_DRIVE_UPLOAD_ALL,
+            headers=headers,
+            data={
+                "file_name": file_name,
+                "parent_type": "explorer",
+                "parent_node": root_token,
+                "size": str(len(content)),
+            },
+            files={"file": (file_name, io.BytesIO(content), "application/octet-stream")},
+        )
+        upload_data = upload_resp.json()
+        if upload_data.get("code") != 0:
+            logger.error("upload_to_user_drive upload failed: %s", upload_data)
+            return None
+        file_token = upload_data.get("data", {}).get("file_token")
+        if not file_token:
+            logger.error("upload_to_user_drive: no file_token in response: %s", upload_data)
+            return None
+
+        # 3. Enable tenant-readable link sharing
+        perm_resp = await hx.patch(
+            _FEISHU_DRIVE_PERMISSION.format(token=file_token),
+            headers=headers,
+            params={"type": "file"},
+            json={"link_share_entity": "tenant_readable"},
+        )
+        perm_data = perm_resp.json()
+        if perm_data.get("code") != 0:
+            logger.warning("upload_to_user_drive set_permission failed: %s", perm_data)
+
+        return f"https://feishu.cn/file/{file_token}"
 
 
 def build_ws_client(on_message) -> lark.ws.Client:

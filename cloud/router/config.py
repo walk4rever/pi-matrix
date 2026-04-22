@@ -16,6 +16,7 @@ class Settings(BaseSettings):
     supabase_url: str
     supabase_service_key: str
     dashboard_url: str = "https://matrix.air7.fun"
+    api_base_url: str = "https://api.matrix.air7.fun"
 
     class Config:
         env_file = ".env"

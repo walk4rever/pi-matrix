@@ -11,6 +11,9 @@ class Settings(BaseSettings):
     resend_api_key: str = ""
     from_email: str = "pi-matrix <matrix@air7.fun>"
     dashboard_url: str = "https://matrix.air7.fun"
+    api_base_url: str = "https://api.matrix.air7.fun"
+    feishu_app_id: str = ""
+    feishu_app_secret: str = ""
 
     class Config:
         env_file = ".env"

@@ -409,11 +409,19 @@ def _build_turn_text(session_id: str, msg: "InboxMessage") -> str:
     return "\n\n".join(parts).strip()
 
 
-_MAX_INLINE_FILE_BYTES = 20 * 1024 * 1024  # 20 MB — leave headroom below Feishu's 30 MB limit
+_MAX_INLINE_FILE_BYTES = 20 * 1024 * 1024   # 20 MB — IM attachment limit
+_MAX_DRIVE_FILE_BYTES  = 50 * 1024 * 1024   # 50 MB — Drive upload limit via this path
 
 
-def _collect_reply_files(reply_text: str) -> list[dict]:
-    files: list[dict] = []
+def _collect_reply_files(reply_text: str) -> tuple[list[dict], list[dict]]:
+    """Returns (inline_files, drive_files).
+
+    inline_files: ≤20 MB, sent as Feishu IM attachments.
+    drive_files:  20–50 MB, routed through Feishu Drive OAuth upload.
+    Files >50 MB are skipped with a log message.
+    """
+    inline_files: list[dict] = []
+    drive_files: list[dict] = []
     seen: set[str] = set()
     for match in _WORKSPACE_PATH_PATTERN.findall(reply_text or ""):
         if match in seen:
@@ -426,15 +434,20 @@ def _collect_reply_files(reply_text: str) -> list[dict]:
             continue
         if not resolved.is_file() or not _is_within_workspace(resolved):
             continue
-        if resolved.stat().st_size > _MAX_INLINE_FILE_BYTES:
-            print(f"[inbox] skip large file {resolved.name} ({resolved.stat().st_size} bytes)", flush=True)
+        size = resolved.stat().st_size
+        if size > _MAX_DRIVE_FILE_BYTES:
+            print(f"[inbox] skip oversized file {resolved.name} ({size} bytes)", flush=True)
             continue
         content = resolved.read_bytes()
-        files.append({
+        entry = {
             "name": resolved.name,
             "content_b64": base64.b64encode(content).decode("ascii"),
-        })
-    return files
+        }
+        if size > _MAX_INLINE_FILE_BYTES:
+            drive_files.append(entry)
+        else:
+            inline_files.append(entry)
+    return inline_files, drive_files
 
 
 def _run_turn(session_id: str, user_id: str, text: str, open_id: str) -> str:
@@ -528,9 +541,11 @@ async def _process(msg: InboxMessage) -> None:
             )
 
         payload: dict = {"open_id": msg.open_id, "text": text}
-        files = _collect_reply_files(text)
-        if files:
-            payload["files"] = files
+        inline_files, drive_files = _collect_reply_files(text)
+        if inline_files:
+            payload["files"] = inline_files
+        if drive_files:
+            payload["drive_files"] = drive_files
         if msg.message_id:
             payload["message_id"] = msg.message_id
         if msg.reaction_id:

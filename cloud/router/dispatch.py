@@ -3,6 +3,7 @@ Route incoming messages to the correct agent instance.
 On first message from an unbound open_id, prompt user to link their account.
 """
 import httpx
+from datetime import datetime, timezone, timedelta
 from supabase import create_client
 from feishu import send_message, send_registration_card
 from config import settings
@@ -91,3 +92,20 @@ async def _deliver(
 async def _handle_unbound(open_id: str, text: str) -> None:
     register_url = f"{settings.dashboard_url}/register?open_id={open_id}"
     await send_registration_card(open_id, register_url)
+
+
+def get_drive_token(open_id: str) -> dict | None:
+    """Return a valid Drive token row for the open_id, or None if absent/expired."""
+    result = supabase.table("pi_matrix_feishu_drive_tokens") \
+        .select("access_token,refresh_token,expires_at") \
+        .eq("open_id", open_id).maybe_single().execute()
+    if result is None or not result.data:
+        return None
+    data = result.data
+    try:
+        expires_at = datetime.fromisoformat(data["expires_at"].replace("Z", "+00:00"))
+        if datetime.now(timezone.utc) + timedelta(minutes=5) >= expires_at:
+            return None  # Expired; user must re-authorize
+    except Exception:
+        return None
+    return data
