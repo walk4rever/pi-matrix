@@ -132,7 +132,15 @@ async def send_message(open_id: str, text: str) -> None:
         logger.error("send_message failed: code=%s msg=%s", resp.code, resp.msg)
 
 
+_FEISHU_FILE_SIZE_LIMIT = 30 * 1024 * 1024  # 30 MB
+
+
 async def send_file(open_id: str, file_name: str, content: bytes) -> None:
+    if len(content) > _FEISHU_FILE_SIZE_LIMIT:
+        size_mb = len(content) / 1024 / 1024
+        await send_message(open_id, f"文件 **{file_name}** 大小 {size_mb:.1f} MB，超过飞书 30 MB 限制，无法直接发送。文件已保存在员工工作区，可通过指令下载或压缩后重新发送。")
+        return
+
     upload_req = CreateFileRequest.builder().request_body(
         CreateFileRequestBody.builder()
         .file_type("stream")
@@ -140,9 +148,15 @@ async def send_file(open_id: str, file_name: str, content: bytes) -> None:
         .file(io.BytesIO(content))
         .build()
     ).build()
-    upload_resp = client.im.v1.file.create(upload_req)
+    try:
+        upload_resp = client.im.v1.file.create(upload_req)
+    except Exception:
+        logger.exception("send_file upload exception for %s", file_name)
+        await send_message(open_id, f"文件 **{file_name}** 上传失败，文件已保存在员工工作区。")
+        return
     if not upload_resp.success() or not upload_resp.data or not upload_resp.data.file_key:
         logger.error("send_file upload failed: code=%s msg=%s", upload_resp.code, upload_resp.msg)
+        await send_message(open_id, f"文件 **{file_name}** 上传失败（code={upload_resp.code}），文件已保存在员工工作区。")
         return
 
     file_key = upload_resp.data.file_key
