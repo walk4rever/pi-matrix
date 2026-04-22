@@ -269,30 +269,27 @@ async def send_registration_card(open_id: str, register_url: str) -> None:
 async def send_drive_auth_card(open_id: str, file_name: str, auth_url: str) -> None:
     """Send a Feishu card prompting the user to authorize Drive access."""
     card = {
-        "schema": "2.0",
         "config": {"wide_screen_mode": True},
-        "body": {
-            "elements": [
-                {
-                    "tag": "markdown",
-                    "content": (
-                        f"文件 **{file_name}** 超过飞书消息 30 MB 限制，需上传到飞书云盘。\n\n"
-                        "请点击下方按钮授权，授权后文件将自动上传并发送给您。"
-                    ),
-                },
-                {
-                    "tag": "action",
-                    "actions": [
-                        {
-                            "tag": "button",
-                            "text": {"tag": "plain_text", "content": "授权飞书云盘 →"},
-                            "type": "primary",
-                            "url": auth_url,
-                        }
-                    ],
-                },
-            ]
-        },
+        "elements": [
+            {
+                "tag": "markdown",
+                "content": (
+                    f"文件 **{file_name}** 超过飞书消息 30 MB 限制，需上传到飞书云盘。\n\n"
+                    "请点击下方按钮授权，授权后文件将自动上传并发送给您。"
+                ),
+            },
+            {
+                "tag": "action",
+                "actions": [
+                    {
+                        "tag": "button",
+                        "text": {"tag": "plain_text", "content": "授权飞书云盘 →"},
+                        "type": "primary",
+                        "url": auth_url,
+                    }
+                ],
+            },
+        ],
     }
     req = CreateMessageRequest.builder() \
         .receive_id_type("open_id") \
