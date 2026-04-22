@@ -16,3 +16,10 @@ ALTER TABLE pi_matrix_feishu_drive_tokens ENABLE ROW LEVEL SECURITY;
 -- Block all direct client access; service role bypasses RLS.
 CREATE POLICY "service_only" ON pi_matrix_feishu_drive_tokens
     USING (false);
+
+-- Grants
+GRANT SELECT, INSERT, UPDATE, DELETE ON pi_matrix_feishu_drive_tokens TO service_role;
+
+-- Index
+CREATE INDEX ON pi_matrix_feishu_drive_tokens (open_id);
+CREATE INDEX ON pi_matrix_feishu_drive_tokens (user_id);
