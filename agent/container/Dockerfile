@@ -11,6 +11,7 @@ RUN git clone --depth=1 https://github.com/NousResearch/hermes-agent.git /opt/he
 
 WORKDIR /app
 COPY inbox.py .
+COPY hermes_wrapper_runner.py .
 COPY hermes-config.yaml /app/default-config.yaml
 COPY SOUL.md /app/default-soul.md
 

@@ -23,6 +23,19 @@ services:
       interval: 30s
       retries: 3
 
+  hermes_wrapper:
+    image: pi-matrix/hermes-agent:latest
+    command: ["uvicorn", "hermes_wrapper_runner:app", "--host", "0.0.0.0", "--port", "8001", "--loop", "asyncio"]
+    restart: always
+    env_file: .env
+    depends_on:
+      router:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8001/health')"]
+      interval: 30s
+      retries: 3
+
   api:
     build:
       context: ../cloud/api

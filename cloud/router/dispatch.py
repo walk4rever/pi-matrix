@@ -22,11 +22,13 @@ async def dispatch(
     user_id = _resolve_user(open_id)
 
     if user_id is None:
+        print(f"[dispatch] unbound open_id={open_id}")
         await _handle_unbound(open_id, text)
         return
 
     instance = _resolve_instance(user_id)
     if instance is None:
+        print(f"[dispatch] no_instance user_id={user_id} open_id={open_id}")
         await send_message(open_id, "Your instance is being set up, please try again in a moment.")
         return
 
