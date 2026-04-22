@@ -50,10 +50,16 @@ HERMES_ENABLED_TOOLSETS = [
     "feishu_drive",
 ]
 _UPLOADS_DIR = HERMES_WORKSPACE_DIR / "uploads"
-_WORKSPACE_PATH_PATTERN = re.compile(r"(/root/\.hermes/workspace/[^\s'\"`]+)")
+# Files mentioned in final text that are eligible for platform push-back.
+# Include workspace artifacts + browser screenshots cache.
+_REPLY_FILE_PATH_PATTERN = re.compile(r"(/root/\.hermes/(?:workspace|cache/screenshots)/[^\s'\"`]+)")
 DEFAULT_CONFIG_PATH = Path("/app/default-config.yaml")
 DEFAULT_SOUL_PATH = Path("/app/default-soul.md")
 _SESSION_UPLOADS_ROOT = HERMES_WORKSPACE_DIR / ".session_uploads"
+_REPLY_FILE_ALLOWED_DIRS = (
+    HERMES_WORKSPACE_DIR,
+    Path("/root/.hermes/cache/screenshots"),
+)
 
 session_db = SessionDB(db_path=HERMES_STATE_DB_PATH)
 _session_locks: dict[str, asyncio.Lock] = {}
@@ -330,12 +336,19 @@ def _save_session_uploads(session_id: str, uploads: list[dict[str, Any]]) -> Non
     path.write_text(json.dumps(uploads, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
-def _is_within_workspace(path: Path) -> bool:
+def _is_allowed_reply_file(path: Path) -> bool:
     try:
-        path.resolve().relative_to(HERMES_WORKSPACE_DIR.resolve())
-        return True
+        resolved = path.resolve()
     except Exception:
         return False
+
+    for allowed_root in _REPLY_FILE_ALLOWED_DIRS:
+        try:
+            resolved.relative_to(allowed_root.resolve())
+            return True
+        except Exception:
+            continue
+    return False
 
 
 def _materialize_attachments(attachments: list["InboxAttachment"] | None) -> tuple[list[Path], list[str], list[dict[str, Any]]]:
@@ -425,7 +438,7 @@ def _collect_reply_files(reply_text: str) -> tuple[list[dict], list[dict]]:
     inline_files: list[dict] = []
     drive_files: list[dict] = []
     seen: set[str] = set()
-    for match in _WORKSPACE_PATH_PATTERN.findall(reply_text or ""):
+    for match in _REPLY_FILE_PATH_PATTERN.findall(reply_text or ""):
         if match in seen:
             continue
         seen.add(match)
@@ -434,7 +447,7 @@ def _collect_reply_files(reply_text: str) -> tuple[list[dict], list[dict]]:
             resolved = p.resolve(strict=True)
         except Exception:
             continue
-        if not resolved.is_file() or not _is_within_workspace(resolved):
+        if not resolved.is_file() or not _is_allowed_reply_file(resolved):
             continue
         size = resolved.stat().st_size
         if size > _MAX_DRIVE_FILE_BYTES:
