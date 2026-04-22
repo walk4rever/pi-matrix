@@ -10,6 +10,7 @@ toolsets:
   - todo
   - tts
   - vision
+  - browser
   - feishu_doc
   - feishu_drive
 

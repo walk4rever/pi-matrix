@@ -1,6 +1,18 @@
 FROM python:3.12-slim
 
-RUN apt-get update && apt-get install -y --no-install-recommends git && \
+# System deps + browser runtime prerequisites.
+# We keep one image with browser capability pre-baked.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    git \
+    curl \
+    nodejs \
+    npm \
+    fontconfig \
+    fonts-noto-cjk \
+    fonts-noto-color-emoji \
+    fonts-dejavu-core \
+    fonts-liberation \
+    fonts-wqy-zenhei && \
     rm -rf /var/lib/apt/lists/*
 
 RUN git clone --depth=1 https://github.com/NousResearch/hermes-agent.git /opt/hermes && \
@@ -8,6 +20,12 @@ RUN git clone --depth=1 https://github.com/NousResearch/hermes-agent.git /opt/he
     "fastapi>=0.111.0" \
     "uvicorn[standard]>=0.29.0" \
     "httpx>=0.27.0"
+
+# Hermes browser tool local-mode requirements:
+# - agent-browser CLI
+# - Playwright + Chromium (with OS deps)
+RUN npm install -g agent-browser playwright && \
+    playwright install --with-deps chromium
 
 WORKDIR /app
 COPY inbox.py .

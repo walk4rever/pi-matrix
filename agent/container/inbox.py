@@ -45,6 +45,7 @@ HERMES_ENABLED_TOOLSETS = [
     "todo",
     "tts",
     "vision",
+    "browser",
     "feishu_doc",
     "feishu_drive",
 ]
