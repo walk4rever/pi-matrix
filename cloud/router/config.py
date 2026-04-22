@@ -18,6 +18,13 @@ class Settings(BaseSettings):
     dashboard_url: str = "https://matrix.air7.fun"
     api_base_url: str = "https://relay.air7.fun/pm/api"
 
+    # Cloudflare R2 (large file delivery)
+    r2_endpoint: str = ""
+    r2_access_key_id: str = ""
+    r2_secret_access_key: str = ""
+    r2_bucket_name: str = ""
+    r2_public_url: str = ""  # e.g. https://files.matrix.air7.fun
+
     class Config:
         env_file = ".env"
 

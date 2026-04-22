@@ -3,13 +3,14 @@ pi-matrix router: receives normalized inbound events from platform Hermes
 Gateway wrapper, routes to the correct user agent instance, and relays
 replies back to Feishu.
 """
+import asyncio
 import base64
-from urllib.parse import urlencode
 from fastapi import FastAPI, Request, HTTPException, Header
 from pydantic import BaseModel
 from config import settings
-from feishu import remove_reaction, send_drive_auth_card, send_file, send_message, upload_to_user_drive
-from dispatch import dispatch, get_drive_token
+from feishu import remove_reaction, send_file, send_message
+from dispatch import dispatch
+import r2
 
 app = FastAPI(title="pi-matrix router", version="0.1.0")
 
@@ -90,17 +91,8 @@ async def agent_reply(request: Request):
     return {"ok": True}
 
 
-def _build_drive_auth_url(open_id: str) -> str:
-    params = {
-        "app_id": settings.feishu_app_id,
-        "redirect_uri": f"{settings.api_base_url}/feishu/drive/callback",
-        "scope": "drive:drive",
-        "state": open_id,
-    }
-    return f"https://open.feishu.cn/open-apis/authen/v1/authorize?{urlencode(params)}"
-
-
 async def _handle_drive_files(open_id: str, drive_files: list) -> None:
+    loop = asyncio.get_event_loop()
     for item in drive_files:
         if not isinstance(item, dict):
             continue
@@ -112,17 +104,15 @@ async def _handle_drive_files(open_id: str, drive_files: list) -> None:
             content = base64.b64decode(content_b64)
         except Exception:
             continue
-
-        token_row = get_drive_token(open_id)
-        if not token_row:
-            await send_drive_auth_card(open_id, file_name, _build_drive_auth_url(open_id))
-            continue
-
-        share_url = await upload_to_user_drive(token_row["access_token"], file_name, content)
-        if share_url:
-            await send_message(open_id, f"文件 **{file_name}** 已上传到您的飞书云盘：[点击查看]({share_url})")
-        else:
-            await send_message(open_id, f"文件 **{file_name}** 上传到云盘失败，文件已保存在员工工作区。")
+        try:
+            url = await loop.run_in_executor(None, r2.upload_file, file_name, content)
+            size_mb = len(content) / 1024 / 1024
+            await send_message(
+                open_id,
+                f"文件 **{file_name}**（{size_mb:.1f} MB）已上传：[点击下载]({url})\n\n链接 24 小时内有效。",
+            )
+        except Exception:
+            await send_message(open_id, f"文件 **{file_name}** 上传失败，文件已保存在员工工作区。")
 
 
 @app.get("/health")
