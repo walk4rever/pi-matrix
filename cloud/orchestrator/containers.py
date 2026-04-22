@@ -11,13 +11,10 @@ _docker = docker.from_env()
 def provision(user_id: str) -> str:
     """Start a hermes container for a user. Returns the container's internal URL."""
     name = f"pi-matrix-{user_id}"
-    hermes_volume = _hermes_volume_name(user_id)
 
     # Remove existing container if present (re-provision case)
     _remove_if_exists(name)
 
-    # Persist the full Hermes home so all user runtime data survives recreation:
-    # state, skills, memories, workspace artifacts, config, and SOUL customizations.
     _docker.containers.run(
         settings.docker_image,
         name=name,
@@ -30,12 +27,12 @@ def provision(user_id: str) -> str:
             "HERMES_MODEL": settings.hermes_model,
             "HERMES_STATE_DB_PATH": "/root/.hermes/state/state.db",
             "HERMES_WORKSPACE_DIR": "/root/.hermes/workspace",
-            "TERMINAL_CWD": "/root/.hermes/workspace",
-            "MESSAGING_CWD": "/root/.hermes/workspace",
+            "TERMINAL_CWD": "/root",
+            "MESSAGING_CWD": "/root",
             "HERMES_SESSION_SOURCE": "feishu",
         },
         volumes={
-            hermes_volume: {"bind": "/root/.hermes", "mode": "rw"},
+            _home_volume_name(user_id): {"bind": "/root", "mode": "rw"},
         },
         network="pi-matrix",  # join the same docker network
         labels={"pi-matrix.user_id": user_id},
@@ -47,15 +44,16 @@ def provision(user_id: str) -> str:
 def deprovision(user_id: str) -> None:
     """Stop and remove a user's hermes container and persisted user volumes."""
     _remove_if_exists(f"pi-matrix-{user_id}")
-    _remove_volume_if_exists(_hermes_volume_name(user_id))
+    _remove_volume_if_exists(_home_volume_name(user_id))
     # Legacy volume cleanup (safe no-op if they don't exist)
+    _remove_volume_if_exists(f"pi-matrix-hermes-{user_id}")
     _remove_volume_if_exists(f"pi-matrix-state-{user_id}")
     _remove_volume_if_exists(f"pi-matrix-skills-{user_id}")
     _remove_volume_if_exists(f"pi-matrix-workspace-{user_id}")
 
 
-def _hermes_volume_name(user_id: str) -> str:
-    return f"pi-matrix-hermes-{user_id}"
+def _home_volume_name(user_id: str) -> str:
+    return f"pi-matrix-home-{user_id}"
 
 
 def _remove_if_exists(name: str) -> None:
