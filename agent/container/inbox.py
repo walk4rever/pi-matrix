@@ -51,15 +51,11 @@ HERMES_ENABLED_TOOLSETS = [
 ]
 _UPLOADS_DIR = HERMES_WORKSPACE_DIR / "uploads"
 # Files mentioned in final text that are eligible for platform push-back.
-# Include workspace artifacts + browser screenshots cache.
-_REPLY_FILE_PATH_PATTERN = re.compile(r"(/root/\.hermes/(?:workspace|cache/screenshots)/[^\s'\"`]+)")
+# Accept any absolute Unix path emitted by the agent (no directory whitelist).
+_REPLY_FILE_PATH_PATTERN = re.compile(r"(/[^\s'\"`]+)")
 DEFAULT_CONFIG_PATH = Path("/app/default-config.yaml")
 DEFAULT_SOUL_PATH = Path("/app/default-soul.md")
 _SESSION_UPLOADS_ROOT = HERMES_WORKSPACE_DIR / ".session_uploads"
-_REPLY_FILE_ALLOWED_DIRS = (
-    HERMES_WORKSPACE_DIR,
-    Path("/root/.hermes/cache/screenshots"),
-)
 
 session_db = SessionDB(db_path=HERMES_STATE_DB_PATH)
 _session_locks: dict[str, asyncio.Lock] = {}
@@ -338,17 +334,10 @@ def _save_session_uploads(session_id: str, uploads: list[dict[str, Any]]) -> Non
 
 def _is_allowed_reply_file(path: Path) -> bool:
     try:
-        resolved = path.resolve()
+        resolved = path.resolve(strict=True)
     except Exception:
         return False
-
-    for allowed_root in _REPLY_FILE_ALLOWED_DIRS:
-        try:
-            resolved.relative_to(allowed_root.resolve())
-            return True
-        except Exception:
-            continue
-    return False
+    return resolved.is_file()
 
 
 def _materialize_attachments(attachments: list["InboxAttachment"] | None) -> tuple[list[Path], list[str], list[dict[str, Any]]]:
