@@ -44,6 +44,7 @@ HERMES_ENABLED_TOOLSETS = [
     "delegation",
     "todo",
     "tts",
+    "vision",
     "feishu_doc",
     "feishu_drive",
 ]

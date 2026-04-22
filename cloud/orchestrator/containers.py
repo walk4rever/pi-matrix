@@ -30,6 +30,12 @@ def provision(user_id: str) -> str:
             "TERMINAL_CWD": "/root",
             "MESSAGING_CWD": "/root",
             "HERMES_SESSION_SOURCE": "feishu",
+            # Hermes auxiliary vision config (used by vision_analyze/browser_vision).
+            # Route through internal LiteLLM gateway alias "vision" by default.
+            "AUXILIARY_VISION_PROVIDER": settings.auxiliary_vision_provider,
+            "AUXILIARY_VISION_MODEL": settings.auxiliary_vision_model,
+            "AUXILIARY_VISION_BASE_URL": settings.auxiliary_vision_base_url,
+            "AUXILIARY_VISION_API_KEY": settings.auxiliary_vision_api_key or settings.gateway_key,
         },
         volumes={
             _home_volume_name(user_id): {"bind": "/root", "mode": "rw"},
