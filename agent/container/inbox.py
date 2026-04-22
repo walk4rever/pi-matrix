@@ -6,9 +6,12 @@ Uses Hermes native session persistence (SessionDB) keyed by Feishu open_id.
 Also forwards Hermes tool/status progress updates back to Feishu.
 """
 import asyncio
+import base64
 import json
 import logging
 import os
+import re
+import shutil
 import time
 from pathlib import Path
 
@@ -26,6 +29,8 @@ GATEWAY_URL = os.environ["GATEWAY_URL"]            # http://gateway:4000/v1
 GATEWAY_KEY = os.environ["GATEWAY_KEY"]            # litellm master key
 HERMES_MODEL = os.environ.get("HERMES_MODEL", "default")
 HERMES_STATE_DB_PATH = Path(os.environ.get("HERMES_STATE_DB_PATH", "/root/.hermes/state/state.db"))
+HERMES_SKILLS_DIR = Path(os.environ.get("HERMES_SKILLS_DIR", "/root/.hermes/skills"))
+HERMES_WORKSPACE_DIR = Path(os.environ.get("HERMES_WORKSPACE_DIR", "/root/.hermes/workspace"))
 HERMES_ENABLED_TOOLSETS = [
     "file",
     "terminal",
@@ -40,10 +45,48 @@ HERMES_ENABLED_TOOLSETS = [
     "feishu_doc",
     "feishu_drive",
 ]
+_UPLOADS_DIR = HERMES_WORKSPACE_DIR / "uploads"
+_WORKSPACE_PATH_PATTERN = re.compile(r"(/root/\.hermes/workspace/[^\s'\"`]+)")
+DEFAULT_CONFIG_PATH = Path("/app/default-config.yaml")
+DEFAULT_SOUL_PATH = Path("/app/default-soul.md")
 
 session_db = SessionDB(db_path=HERMES_STATE_DB_PATH)
 _session_locks: dict[str, asyncio.Lock] = {}
 _session_locks_guard = asyncio.Lock()
+
+
+def _bootstrap_hermes_home() -> None:
+    """Ensure a fresh persisted /root/.hermes has required starter files/dirs."""
+    hermes_home = Path("/root/.hermes")
+    hermes_home.mkdir(parents=True, exist_ok=True)
+
+    for rel in ("skills", "state", "workspace", "workspace/uploads", "workspace/downloads", "memories"):
+        (hermes_home / rel).mkdir(parents=True, exist_ok=True)
+
+    config_path = hermes_home / "config.yaml"
+    if not config_path.exists() and DEFAULT_CONFIG_PATH.exists():
+        shutil.copy2(DEFAULT_CONFIG_PATH, config_path)
+
+    soul_path = hermes_home / "SOUL.md"
+    if not soul_path.exists() and DEFAULT_SOUL_PATH.exists():
+        shutil.copy2(DEFAULT_SOUL_PATH, soul_path)
+
+
+def _bootstrap_user_skills() -> None:
+    """Ensure user skills dir exists and sync bundled skills into it."""
+    HERMES_SKILLS_DIR.mkdir(parents=True, exist_ok=True)
+    try:
+        from tools.skills_sync import sync_skills
+
+        result = sync_skills(quiet=True) or {}
+        logger.info(
+            "skills synced copied=%s updated=%s user_modified=%s",
+            len(result.get("copied", [])),
+            len(result.get("updated", [])),
+            len(result.get("user_modified", [])),
+        )
+    except Exception:
+        logger.exception("skills bootstrap failed; continuing without sync")
 
 
 class ProgressEmitter:
@@ -215,6 +258,87 @@ async def _get_session_lock(session_id: str) -> asyncio.Lock:
         return lock
 
 
+def _sanitize_file_name(name: str) -> str:
+    name = (name or "upload.bin").strip()
+    name = Path(name).name
+    safe = re.sub(r"[^A-Za-z0-9._-]", "_", name)
+    return safe[:120] or "upload.bin"
+
+
+def _is_within_workspace(path: Path) -> bool:
+    try:
+        path.resolve().relative_to(HERMES_WORKSPACE_DIR.resolve())
+        return True
+    except Exception:
+        return False
+
+
+def _materialize_attachments(attachments: list["InboxAttachment"] | None) -> tuple[list[Path], list[str]]:
+    saved_paths: list[Path] = []
+    notes: list[str] = []
+    if not attachments:
+        return saved_paths, notes
+
+    _UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
+    for idx, att in enumerate(attachments, start=1):
+        if not att.content_b64:
+            continue
+        try:
+            raw = base64.b64decode(att.content_b64)
+        except Exception:
+            notes.append(f"- 附件#{idx} 解码失败，已跳过")
+            continue
+        ts = int(time.time() * 1000)
+        file_name = _sanitize_file_name(att.name or f"attachment_{idx}.bin")
+        dest = _UPLOADS_DIR / f"{ts}_{idx}_{file_name}"
+        dest.write_bytes(raw)
+        saved_paths.append(dest)
+        notes.append(f"- {dest}")
+
+    return saved_paths, notes
+
+
+def _build_turn_text(msg: "InboxMessage") -> str:
+    saved_paths, notes = _materialize_attachments(msg.attachments)
+    parts: list[str] = []
+
+    if msg.message_type:
+        parts.append(f"[平台消息类型: {msg.message_type}]")
+    if msg.raw_content is not None:
+        parts.append(f"[平台原始内容: {json.dumps(msg.raw_content, ensure_ascii=False)}]")
+
+    if saved_paths:
+        parts.append("用户上传了附件，已保存到以下本地路径：\n" + "\n".join(notes))
+
+    user_text = (msg.text or "").strip()
+    if user_text:
+        parts.append(user_text)
+
+    return "\n\n".join(parts).strip()
+
+
+def _collect_reply_files(reply_text: str) -> list[dict]:
+    files: list[dict] = []
+    seen: set[str] = set()
+    for match in _WORKSPACE_PATH_PATTERN.findall(reply_text or ""):
+        if match in seen:
+            continue
+        seen.add(match)
+        p = Path(match)
+        try:
+            resolved = p.resolve(strict=True)
+        except Exception:
+            continue
+        if not resolved.is_file() or not _is_within_workspace(resolved):
+            continue
+        content = resolved.read_bytes()
+        files.append({
+            "name": resolved.name,
+            "content_b64": base64.b64encode(content).decode("ascii"),
+        })
+    return files
+
+
 def _run_turn(session_id: str, user_id: str, text: str, open_id: str) -> str:
     emitter = ProgressEmitter(open_id)
     try:
@@ -241,9 +365,19 @@ def _run_turn(session_id: str, user_id: str, text: str, open_id: str) -> str:
         emitter.close()
 
 
+class InboxAttachment(BaseModel):
+    name: str | None = None
+    message_type: str | None = None
+    feishu_file_key: str | None = None
+    content_b64: str
+
+
 class InboxMessage(BaseModel):
     open_id: str
-    text: str
+    text: str = ""
+    attachments: list[InboxAttachment] | None = None
+    message_type: str | None = None
+    raw_content: dict | None = None
     message_id: str | None = None
     reaction_id: str | None = None
 
@@ -252,20 +386,33 @@ async def _process(msg: InboxMessage) -> None:
     session_id = _session_id_from_open_id(msg.open_id)
     session_lock = await _get_session_lock(session_id)
     try:
+        turn_text = _build_turn_text(msg)
+        if not turn_text.strip():
+            return
+
         async with session_lock:
             loop = asyncio.get_event_loop()
-            text = await loop.run_in_executor(None, _run_turn, session_id, msg.open_id, msg.text, msg.open_id)
+            text = await loop.run_in_executor(None, _run_turn, session_id, msg.open_id, turn_text, msg.open_id)
 
         payload: dict = {"open_id": msg.open_id, "text": text}
+        files = _collect_reply_files(text)
+        if files:
+            payload["files"] = files
         if msg.message_id:
             payload["message_id"] = msg.message_id
         if msg.reaction_id:
             payload["reaction_id"] = msg.reaction_id
 
-        async with httpx.AsyncClient(timeout=60) as client:
+        async with httpx.AsyncClient(timeout=120) as client:
             await client.post(ROUTER_REPLY_URL, json=payload)
     except Exception:
         logger.exception("_process failed for open_id=%s session_id=%s", msg.open_id, session_id)
+
+
+@app.on_event("startup")
+async def _startup() -> None:
+    _bootstrap_hermes_home()
+    _bootstrap_user_skills()
 
 
 @app.post("/inbox")

@@ -16,6 +16,11 @@ agent:
   max_turns: 90
   gateway_timeout: 1800
 
+terminal:
+  backend: local
+  cwd: /root/.hermes/workspace
+  timeout: 180
+
 approvals:
   mode: manual
 

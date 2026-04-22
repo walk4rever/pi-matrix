@@ -13,6 +13,9 @@ supabase = create_client(settings.supabase_url, settings.supabase_service_key)
 async def dispatch(
     open_id: str,
     text: str,
+    attachments: list[dict] | None = None,
+    message_type: str | None = None,
+    raw_content: dict | None = None,
     message_id: str | None = None,
     reaction_id: str | None = None,
 ) -> None:
@@ -27,7 +30,16 @@ async def dispatch(
         await send_message(open_id, "Your instance is being set up, please try again in a moment.")
         return
 
-    await _deliver(instance["endpoint"], open_id, text, message_id=message_id, reaction_id=reaction_id)
+    await _deliver(
+        instance["endpoint"],
+        open_id,
+        text,
+        attachments=attachments,
+        message_type=message_type,
+        raw_content=raw_content,
+        message_id=message_id,
+        reaction_id=reaction_id,
+    )
 
 
 def _resolve_user(open_id: str) -> str | None:
@@ -53,10 +65,19 @@ async def _deliver(
     endpoint: str,
     open_id: str,
     text: str,
+    attachments: list[dict] | None = None,
+    message_type: str | None = None,
+    raw_content: dict | None = None,
     message_id: str | None = None,
     reaction_id: str | None = None,
 ) -> None:
     payload = {"open_id": open_id, "text": text}
+    if attachments:
+        payload["attachments"] = attachments
+    if message_type:
+        payload["message_type"] = message_type
+    if raw_content is not None:
+        payload["raw_content"] = raw_content
     if message_id:
         payload["message_id"] = message_id
     if reaction_id:

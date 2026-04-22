@@ -1,13 +1,17 @@
+import io
 import json
 import logging
 import lark_oapi as lark
 from lark_oapi.api.im.v1 import (
+    CreateFileRequest,
+    CreateFileRequestBody,
     CreateMessageRequest,
     CreateMessageRequestBody,
     CreateMessageReactionRequest,
     CreateMessageReactionRequestBody,
     DeleteMessageReactionRequest,
     Emoji,
+    GetMessageResourceRequest,
     P2ImMessageReceiveV1,
 )
 from config import settings
@@ -126,6 +130,59 @@ async def send_message(open_id: str, text: str) -> None:
     resp = client.im.v1.message.create(req)
     if not resp.success():
         logger.error("send_message failed: code=%s msg=%s", resp.code, resp.msg)
+
+
+async def send_file(open_id: str, file_name: str, content: bytes) -> None:
+    upload_req = CreateFileRequest.builder().request_body(
+        CreateFileRequestBody.builder()
+        .file_type("stream")
+        .file_name(file_name)
+        .file(io.BytesIO(content))
+        .build()
+    ).build()
+    upload_resp = client.im.v1.file.create(upload_req)
+    if not upload_resp.success() or not upload_resp.data or not upload_resp.data.file_key:
+        logger.error("send_file upload failed: code=%s msg=%s", upload_resp.code, upload_resp.msg)
+        return
+
+    file_key = upload_resp.data.file_key
+    send_req = CreateMessageRequest.builder() \
+        .receive_id_type("open_id") \
+        .request_body(
+            CreateMessageRequestBody.builder()
+            .receive_id(open_id)
+            .msg_type("file")
+            .content(json.dumps({"file_key": file_key}))
+            .build()
+        ).build()
+    send_resp = client.im.v1.message.create(send_req)
+    if not send_resp.success():
+        logger.error("send_file message failed: code=%s msg=%s", send_resp.code, send_resp.msg)
+
+
+def download_message_resource(message_id: str, file_key: str, resource_type: str) -> tuple[str, bytes] | None:
+    req = GetMessageResourceRequest.builder() \
+        .message_id(message_id) \
+        .file_key(file_key) \
+        .type(resource_type) \
+        .build()
+    resp = client.im.v1.message_resource.get(req)
+    if not resp.success() or not resp.file:
+        logger.error(
+            "download_message_resource failed: type=%s code=%s msg=%s",
+            resource_type,
+            resp.code,
+            resp.msg,
+        )
+        return None
+
+    try:
+        content = resp.file.read()
+        file_name = resp.file_name or f"{resource_type}_{file_key}"
+        return file_name, content
+    except Exception:
+        logger.exception("download_message_resource read failed")
+        return None
 
 
 def add_reaction(message_id: str, emoji: str = "THUMBSUP") -> str | None:
