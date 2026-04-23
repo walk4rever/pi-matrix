@@ -122,22 +122,22 @@ _user_tokens_cache: dict[str, dict[str, Any]] = {}
 # ------------------------------------------------------------------
 # Typing indicator helpers
 # ------------------------------------------------------------------
-async def _start_typing(open_id: str) -> None:
+async def _start_typing(chat_id: str) -> None:
     if _adapter is None:
         return
     try:
-        await _adapter.start_typing(open_id)
+        await _adapter.start_typing(chat_id)
     except AttributeError:
         pass  # older FeishuAdapter without typing support
     except Exception:
         logger.debug("start_typing failed", exc_info=True)
 
 
-async def _stop_typing(open_id: str) -> None:
+async def _stop_typing(chat_id: str) -> None:
     if _adapter is None:
         return
     try:
-        await _adapter.stop_typing(open_id)
+        await _adapter.stop_typing(chat_id)
     except AttributeError:
         pass
     except Exception:
@@ -340,9 +340,12 @@ async def _handle_command(cmd: str, open_id: str, session_key: str, session_id: 
 # ------------------------------------------------------------------
 async def _on_message(event: MessageEvent) -> Optional[str]:
     open_id = event.source.user_id if event.source else None
+    chat_id = event.source.chat_id if event.source else None
     if not open_id:
         logger.warning("drop event without user_id")
         return None
+    if not chat_id:
+        chat_id = open_id
 
     _metrics.messages_received += 1
 
@@ -366,14 +369,17 @@ async def _on_message(event: MessageEvent) -> Optional[str]:
 
     # Session
     class _Src:
-        platform = Platform.FEISHU
-        user_id = open_id
-        chat_id = open_id
-        chat_type = "dm"
-        user_name = ""
-        thread_id = None
+        pass
 
-    session_entry = _session_store.get_or_create_session(_Src())
+    src = _Src()
+    src.platform = Platform.FEISHU
+    src.user_id = open_id
+    src.chat_id = chat_id
+    src.chat_type = "dm"
+    src.user_name = ""
+    src.thread_id = None
+
+    session_entry = _session_store.get_or_create_session(src)
     session_key = session_entry.session_key
 
     # Command interception
@@ -422,7 +428,7 @@ async def _on_message(event: MessageEvent) -> Optional[str]:
 
     response_text: str = ""
     files: list[dict[str, str]] = []
-    await _start_typing(open_id)
+    await _start_typing(chat_id)
     try:
         async with httpx.AsyncClient(timeout=settings.executor_timeout) as client:
             for attempt in range(3):
@@ -459,7 +465,7 @@ async def _on_message(event: MessageEvent) -> Optional[str]:
         response_text = "❌ 处理消息时出错，请重试。"
         _metrics.executor_errors += 1
     finally:
-        await _stop_typing(open_id)
+        await _stop_typing(chat_id)
 
     # Persist transcript only on success with a response
     ts = datetime.now().isoformat()
@@ -482,13 +488,25 @@ async def _on_message(event: MessageEvent) -> Optional[str]:
     # Update metadata
     _session_store.update_session(session_key, updated_at=ts)
 
-    # Deliver text via FeishuAdapter
+    # Deliver text via FeishuAdapter (chat_id). Fallback to open_id send path.
     if _adapter and response_text:
         try:
-            await _adapter.send(open_id, response_text)
-            _metrics.messages_sent += 1
+            send_result = await _adapter.send(chat_id, response_text)
+            if getattr(send_result, "success", False):
+                _metrics.messages_sent += 1
+            else:
+                logger.error(
+                    "send text failed open_id=%s chat_id=%s err=%s",
+                    open_id,
+                    chat_id,
+                    getattr(send_result, "error", "unknown"),
+                )
+                await _delivery.send_text(open_id, response_text)
+                _metrics.messages_sent += 1
         except Exception:
-            logger.exception("send text failed open_id=%s", open_id)
+            logger.exception("send text failed open_id=%s chat_id=%s", open_id, chat_id)
+            await _delivery.send_text(open_id, response_text)
+            _metrics.messages_sent += 1
 
     # Deliver files via delivery layer
     for f in files:
@@ -644,9 +662,9 @@ async def internal_notify(
 ):
     if x_internal_secret != settings.gateway_key:
         raise HTTPException(status_code=403, detail="invalid secret")
-    if _adapter and text:
+    if text:
         try:
-            await _adapter.send(open_id, text)
+            await _delivery.send_text(open_id, text)
         except Exception:
             logger.exception("internal notify failed open_id=%s", open_id)
     return {"ok": True}
