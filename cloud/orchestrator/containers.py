@@ -24,6 +24,10 @@ def provision(user_id: str) -> str:
             "PROGRESS_NOTIFY_URL": f"{settings.platform_gateway_url}/internal/notify",
             "PROGRESS_NOTIFY_SECRET": settings.gateway_key,
             "HERMES_MODEL": settings.hermes_model,
+            # Enable cronjob tool availability in executor runtime.
+            "HERMES_EXEC_ASK": "1",
+            # Mark non-local messaging context so send_message tool is available.
+            "HERMES_SESSION_PLATFORM": "feishu",
             "HERMES_WORKSPACE_DIR": "/root/.hermes/workspace",
             "TERMINAL_CWD": "/root",
             "MESSAGING_CWD": "/root",
