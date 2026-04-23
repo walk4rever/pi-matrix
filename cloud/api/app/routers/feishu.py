@@ -49,8 +49,9 @@ def _welcome(open_id: str) -> None:
     try:
         with httpx.Client(timeout=10) as client:
             client.post(
-                f"{settings.router_reply_url}",
-                json={"open_id": open_id, "text": "🎉 绑定成功！您的爱马仕员工正在准备中，稍后直接发消息开始对话。"},
+                f"{settings.platform_gateway_url}/internal/notify",
+                data={"open_id": open_id, "text": "🎉 绑定成功！您的爱马仕员工正在准备中，稍后直接发消息开始对话。"},
+                headers={"x-internal-secret": settings.gateway_key},
             )
     except Exception:
         pass  # non-critical
@@ -180,8 +181,9 @@ def _notify_drive_auth_success(open_id: str) -> None:
     try:
         with httpx.Client(timeout=10) as hx:
             hx.post(
-                settings.router_reply_url,
-                json={"open_id": open_id, "text": "✅ 飞书云盘授权成功！大文件将自动上传到您的云盘。"},
+                f"{settings.platform_gateway_url}/internal/notify",
+                data={"open_id": open_id, "text": "✅ 飞书云盘授权成功！当前版本仍以飞书消息附件回传为主，云盘自动上传通道正在接入中。"},
+                headers={"x-internal-secret": settings.gateway_key},
             )
     except Exception:
         pass

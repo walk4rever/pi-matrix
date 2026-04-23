@@ -46,7 +46,7 @@ def _provision_user(user_id: str) -> None:
         "name": "cloud-instance",
         "token": device_token,
         "instance_type": "cloud",
-        "endpoint": f"{endpoint}/inbox",
+        "endpoint": endpoint,
     }, on_conflict="user_id,name").execute()
 
 

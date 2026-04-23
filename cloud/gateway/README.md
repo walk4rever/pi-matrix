@@ -1,6 +1,9 @@
-# LLM Gateway
+# LLM Gateway (LiteLLM Proxy)
 
-Powered by [LiteLLM Proxy](https://docs.litellm.ai/docs/proxy/quick_start).
+This is the **LLM Gateway**, not the Platform Gateway.
+
+- **LLM Gateway** (`cloud/gateway/`) = LiteLLM Proxy that routes LLM requests to upstream providers.
+- **Platform Gateway** (`cloud/platform-gateway/`) = Feishu adapter + session router + message delivery. This holds Feishu credentials.
 
 ## Run locally
 
@@ -9,9 +12,8 @@ pip install litellm[proxy]
 litellm --config config.yaml --port 4000
 ```
 
-## Deploy to Railway
+## Deploy
 
-Add env vars from `.env.example`, set start command:
-```
-litellm --config config.yaml --port $PORT
+```bash
+docker compose up -d gateway
 ```

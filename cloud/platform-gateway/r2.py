@@ -1,12 +1,27 @@
+from __future__ import annotations
+
+import logging
 import mimetypes
 import uuid
 from pathlib import Path
 
 import boto3
 from botocore.config import Config
+
 from config import settings
 
+logger = logging.getLogger(__name__)
 _client = None
+
+
+def is_configured() -> bool:
+    return bool(
+        settings.r2_endpoint
+        and settings.r2_access_key_id
+        and settings.r2_secret_access_key
+        and settings.r2_bucket_name
+        and settings.r2_public_url
+    )
 
 
 def _get_client():
@@ -24,7 +39,9 @@ def _get_client():
 
 
 def upload_file(file_name: str, content: bytes) -> str:
-    """Upload content to R2 and return the public URL."""
+    if not is_configured():
+        raise RuntimeError("R2 is not configured")
+
     content_type = mimetypes.guess_type(file_name)[0] or "application/octet-stream"
     ext = Path(file_name).suffix
     key = f"pi-matrix/{uuid.uuid4()}{ext}"

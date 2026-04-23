@@ -1,0 +1,32 @@
+FROM python:3.12-slim
+
+# System deps + browser runtime prerequisites
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    git curl nodejs npm fontconfig fonts-noto-cjk fonts-noto-color-emoji \
+    fonts-dejavu-core fonts-liberation fonts-wqy-zenhei && \
+    rm -rf /var/lib/apt/lists/*
+
+# Install Hermes + executor deps
+RUN git clone --depth=1 https://github.com/NousResearch/hermes-agent.git /opt/hermes && \
+    pip install --no-cache-dir -e "/opt/hermes[all]" \
+    "fastapi>=0.111.0" \
+    "uvicorn[standard]>=0.29.0"
+
+# Browser tool prerequisites
+RUN npm install -g agent-browser playwright && \
+    playwright install --with-deps chromium
+
+WORKDIR /app
+COPY main.py ./
+COPY hermes-config.yaml /app/default-config.yaml
+COPY SOUL.md /app/default-soul.md
+
+# Bootstrap hermes home
+RUN mkdir -p /root/.hermes/skills /root/.hermes/state /root/.hermes/workspace && \
+    cp /app/default-config.yaml /root/.hermes/config.yaml && \
+    cp /app/default-soul.md /root/.hermes/SOUL.md
+
+ENV HERMES_WORKSPACE_DIR=/root/.hermes/workspace
+ENV HERMES_BUNDLED_SKILLS=/opt/hermes/skills
+
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8080"]

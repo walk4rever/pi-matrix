@@ -1,5 +1,6 @@
 services:
 
+  # LiteLLM Proxy — LLM Gateway
   gateway:
     build:
       context: ../cloud/gateway
@@ -10,9 +11,12 @@ services:
       interval: 30s
       retries: 3
 
-  router:
+  # Platform Gateway — central Feishu adapter + session router
+  # Replaces the old router + hermes_wrapper pair.
+  # Holds Feishu credentials; routes execution to per-user stateless executors.
+  platform-gateway:
     build:
-      context: ../cloud/router
+      context: ../cloud/platform-gateway
     restart: always
     env_file: .env
     depends_on:
@@ -20,19 +24,6 @@ services:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
-      interval: 30s
-      retries: 3
-
-  hermes_wrapper:
-    image: pi-matrix/hermes-agent:latest
-    command: ["uvicorn", "hermes_wrapper_runner:app", "--host", "0.0.0.0", "--port", "8001", "--loop", "asyncio"]
-    restart: always
-    env_file: .env
-    depends_on:
-      router:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8001/health')"]
       interval: 30s
       retries: 3
 
