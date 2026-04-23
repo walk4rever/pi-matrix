@@ -35,6 +35,7 @@ def provision(user_id: str) -> str:
             "AUXILIARY_VISION_MODEL": settings.auxiliary_vision_model,
             "AUXILIARY_VISION_BASE_URL": settings.auxiliary_vision_base_url,
             "AUXILIARY_VISION_API_KEY": settings.auxiliary_vision_api_key or settings.gateway_key,
+            "TAVILY_API_KEY": settings.tavily_api_key,
         },
         volumes={
             _home_volume_name(user_id): {"bind": "/root", "mode": "rw"},

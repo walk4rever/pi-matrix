@@ -15,6 +15,8 @@ class Settings(BaseSettings):
     auxiliary_vision_model: str = "vision"
     auxiliary_vision_base_url: str = "http://gateway:4000/v1"
     auxiliary_vision_api_key: str = ""
+    # Optional platform-level web tool keys forwarded to executor containers.
+    tavily_api_key: str = ""
     executor_port: int = 8080
 
     class Config:
