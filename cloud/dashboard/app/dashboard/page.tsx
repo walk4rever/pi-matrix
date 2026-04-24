@@ -212,29 +212,38 @@ export default function DashboardPage() {
         setOverview(dataJson);
         await loadRunLogs(session.access_token, 1);
 
-        // Load SOUL.md + memory files (non-blocking)
-        try {
-          const [soulResp, userMdResp, memoryMdResp] = await Promise.all([
-            fetch(`${API_URL}/dashboard/soul`, { headers: { Authorization: `Bearer ${session.access_token}` }, cache: "no-store" }),
-            fetch(`${API_URL}/dashboard/memory/USER`, { headers: { Authorization: `Bearer ${session.access_token}` }, cache: "no-store" }),
-            fetch(`${API_URL}/dashboard/memory/MEMORY`, { headers: { Authorization: `Bearer ${session.access_token}` }, cache: "no-store" }),
-          ]);
-          if (!mounted) return;
-          if (soulResp.ok) {
-            const j = (await soulResp.json()) as { content: string };
-            setSoulContent(j.content ?? "");
-          }
-          if (userMdResp.ok) {
-            const j = (await userMdResp.json()) as { content: string };
-            setMemoryFiles((prev) => ({ ...prev, USER: j.content ?? "" }));
-          }
-          if (memoryMdResp.ok) {
-            const j = (await memoryMdResp.json()) as { content: string };
-            setMemoryFiles((prev) => ({ ...prev, MEMORY: j.content ?? "" }));
-          }
-        } catch {
-          // non-critical
-        }
+        // Load SOUL.md + memory files independently so one failure does not block the others.
+        const fileRequests = [
+          {
+            url: `${API_URL}/dashboard/soul`,
+            apply: (content: string) => setSoulContent(content),
+          },
+          {
+            url: `${API_URL}/dashboard/memory/USER`,
+            apply: (content: string) => setMemoryFiles((prev) => ({ ...prev, USER: content })),
+          },
+          {
+            url: `${API_URL}/dashboard/memory/MEMORY`,
+            apply: (content: string) => setMemoryFiles((prev) => ({ ...prev, MEMORY: content })),
+          },
+        ];
+
+        await Promise.all(
+          fileRequests.map(async ({ url, apply }) => {
+            try {
+              const resp = await fetch(url, {
+                headers: { Authorization: `Bearer ${session.access_token}` },
+                cache: "no-store",
+              });
+              if (!resp.ok) return;
+              const j = (await resp.json()) as { content?: string };
+              if (!mounted) return;
+              apply(j.content ?? "");
+            } catch {
+              // non-critical
+            }
+          })
+        );
       } catch (err) {
         if (!mounted) return;
         setError(err instanceof Error ? err.message : "加载失败，请稍后重试。");

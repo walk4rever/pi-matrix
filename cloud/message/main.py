@@ -296,7 +296,7 @@ def _get_user_id(open_id: str) -> str | None:
 
 async def _sync_memory_to_db(executor_url: str, user_id: str) -> None:
     """Pull USER.md and MEMORY.md from executor and upsert to Supabase DB."""
-    _PROVIDER_MAP = {"USER": "memory_user_md", "MEMORY": "memory_md"}
+    _PROVIDER_MAP = {"USER": "user_md", "MEMORY": "memory_md"}
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:
             for file_key, provider in _PROVIDER_MAP.items():
@@ -323,6 +323,37 @@ async def _sync_memory_to_db(executor_url: str, user_id: str) -> None:
                     logger.exception("memory db sync failed user_id=%s file=%s", user_id, file_key)
     except Exception:
         logger.exception("memory sync failed user_id=%s", user_id)
+
+
+def _get_soul_prompt(user_id: str) -> str:
+    """Load the current SOUL.md content from DB for live turn injection."""
+    try:
+        from supabase import create_client
+
+        sb = create_client(settings.supabase_url, settings.supabase_service_key)
+        res = (
+            sb.table("pi_matrix_user_credentials")
+            .select("credential_value")
+            .eq("user_id", user_id)
+            .eq("provider", "soul_md")
+            .eq("credential_key", "content")
+            .maybe_single()
+            .execute()
+        )
+        if not res or not getattr(res, "data", None):
+            return ""
+        content = str(res.data.get("credential_value") or "").strip()
+        if not content:
+            return ""
+        return (
+            "This is the current active SOUL.md. "
+            "Treat it as the authoritative personality and behavior spec, "
+            "overriding any earlier persona instructions.\n\n"
+            f"{content}"
+        )
+    except Exception:
+        logger.exception("load soul prompt failed user_id=%s", user_id)
+        return ""
 
 
 def _log_execution(
@@ -560,6 +591,7 @@ async def _on_message(event: MessageEvent) -> Optional[str]:
         "message": text,
         "history": history,
         "context_prompt": context_prompt,
+        "ephemeral_system_prompt": _get_soul_prompt(user_id),
         "session_id": session_entry.session_id,
         "user_id": open_id,
         "attachments": attachments,

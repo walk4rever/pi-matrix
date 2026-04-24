@@ -60,6 +60,15 @@ def _short_text(text: str, max_len: int = 56) -> str:
     return compact[: max_len - 3] + "..."
 
 
+def _credential_content(res: Any) -> str:
+    if not res:
+        return ""
+    data = getattr(res, "data", None)
+    if not data or not isinstance(data, dict):
+        return ""
+    return str(data.get("credential_value") or "")
+
+
 def _cloud_endpoint_healthy(endpoint: str | None) -> bool:
     if not endpoint:
         return False
@@ -200,7 +209,8 @@ def dashboard_overview(user: dict = Depends(get_current_user)):
         .maybe_single()
         .execute()
     )
-    has_feishu_binding = bool(binding and binding.data and binding.data.get("open_id"))
+    binding_data = getattr(binding, "data", None)
+    has_feishu_binding = bool(binding_data and binding_data.get("open_id"))
 
     # User-provided credentials
     cred_res = (
@@ -450,7 +460,7 @@ def dashboard_execution_logs(
 
 
 _MEMORY_FILE_PROVIDERS: dict[str, str] = {
-    "USER": "memory_user_md",
+    "USER": "user_md",
     "MEMORY": "memory_md",
 }
 
@@ -467,19 +477,32 @@ def get_memory_file(file_key: str, user: dict = Depends(get_current_user)) -> di
         raise HTTPException(status_code=404, detail="Unknown memory file")
     user_id = user["sub"]
     try:
-        res = (
-            supabase.table("pi_matrix_user_credentials")
-            .select("credential_value")
-            .eq("user_id", user_id)
-            .eq("provider", provider)
-            .eq("credential_key", "content")
-            .maybe_single()
-            .execute()
+        providers = [provider]
+        if file_key.upper() == "USER":
+            providers.append("memory_user_md")
+
+        content = ""
+        for current_provider in providers:
+            res = (
+                supabase.table("pi_matrix_user_credentials")
+                .select("credential_value")
+                .eq("user_id", user_id)
+                .eq("provider", current_provider)
+                .eq("credential_key", "content")
+                .maybe_single()
+                .execute()
+            )
+            content = _credential_content(res)
+            if content:
+                provider = current_provider
+                break
+        logger.info(
+            "get_memory_file user=%s file=%s found=%s len=%d",
+            user_id,
+            file_key,
+            bool(content),
+            len(content),
         )
-        content: str = ""
-        if res.data:
-            content = str(res.data.get("credential_value") or "")
-        logger.info("get_memory_file user=%s file=%s found=%s len=%d", user_id, file_key, bool(res.data), len(content))
         return {"content": content}
     except Exception:
         logger.exception("get_memory_file failed user=%s file=%s", user_id, file_key)
@@ -497,9 +520,10 @@ def _get_cloud_executor_url(user_id: str) -> str | None:
             .maybe_single()
             .execute()
         )
-        if not res.data:
+        data = getattr(res, "data", None)
+        if not data:
             return None
-        url = str(res.data.get("endpoint") or "").strip().rstrip("/")
+        url = str(data.get("endpoint") or "").strip().rstrip("/")
         for suffix in ("/inbox", "/execute"):
             if url.endswith(suffix):
                 url = url[: -len(suffix)]
@@ -569,9 +593,7 @@ def get_soul(user: dict = Depends(get_current_user)) -> dict[str, str]:
         .maybe_single()
         .execute()
     )
-    content: str = ""
-    if res.data:
-        content = str(res.data.get("credential_value") or "")
+    content = _credential_content(res)
     return {"content": content}
 
 
