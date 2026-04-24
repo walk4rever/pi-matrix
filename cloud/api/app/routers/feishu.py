@@ -157,35 +157,49 @@ async def drive_callback(code: str, state: str):
 
     # 4. Upsert token into unified credential store
     now_iso = datetime.now(timezone.utc).isoformat()
-    supabase.table("pi_matrix_user_credentials").upsert(
-        [
+    try:
+        supabase.table("pi_matrix_user_credentials").upsert(
+            [
+                {
+                    "user_id": user_id,
+                    "provider": "feishu_drive",
+                    "credential_key": "access_token",
+                    "credential_value": access_token,
+                    "external_id": open_id,
+                    "updated_at": now_iso,
+                },
+                {
+                    "user_id": user_id,
+                    "provider": "feishu_drive",
+                    "credential_key": "refresh_token",
+                    "credential_value": refresh_token,
+                    "external_id": open_id,
+                    "updated_at": now_iso,
+                },
+                {
+                    "user_id": user_id,
+                    "provider": "feishu_drive",
+                    "credential_key": "expires_at",
+                    "credential_value": expires_at,
+                    "external_id": open_id,
+                    "updated_at": now_iso,
+                },
+            ],
+            on_conflict="user_id,provider,credential_key",
+        ).execute()
+    except Exception:
+        # Transitional fallback before DB migration is applied.
+        supabase.table("pi_matrix_feishu_drive_tokens").upsert(
             {
                 "user_id": user_id,
-                "provider": "feishu_drive",
-                "credential_key": "access_token",
-                "credential_value": access_token,
-                "external_id": open_id,
+                "open_id": open_id,
+                "access_token": access_token,
+                "refresh_token": refresh_token,
+                "expires_at": expires_at,
                 "updated_at": now_iso,
             },
-            {
-                "user_id": user_id,
-                "provider": "feishu_drive",
-                "credential_key": "refresh_token",
-                "credential_value": refresh_token,
-                "external_id": open_id,
-                "updated_at": now_iso,
-            },
-            {
-                "user_id": user_id,
-                "provider": "feishu_drive",
-                "credential_key": "expires_at",
-                "credential_value": expires_at,
-                "external_id": open_id,
-                "updated_at": now_iso,
-            },
-        ],
-        on_conflict="user_id,provider,credential_key",
-    ).execute()
+            on_conflict="user_id",
+        ).execute()
 
     # 5. Notify user via Feishu
     threading.Thread(target=_notify_drive_auth_success, args=(open_id,), daemon=True).start()
@@ -211,15 +225,33 @@ def _notify_drive_auth_success(open_id: str) -> None:
 @router.get("/drive/status")
 def drive_status(user: dict = Depends(get_current_user)):
     """Check if the current user has a valid Drive token."""
-    result = (
-        supabase.table("pi_matrix_user_credentials")
-        .select("credential_key,credential_value")
-        .eq("user_id", user["sub"])
-        .eq("provider", "feishu_drive")
-        .in_("credential_key", ["access_token", "expires_at"])
-        .execute()
-    )
-    rows = result.data if result and result.data else []
+    rows = []
+    try:
+        result = (
+            supabase.table("pi_matrix_user_credentials")
+            .select("credential_key,credential_value")
+            .eq("user_id", user["sub"])
+            .eq("provider", "feishu_drive")
+            .in_("credential_key", ["access_token", "expires_at"])
+            .execute()
+        )
+        rows = result.data if result and result.data else []
+    except Exception:
+        pass
+    if not rows:
+        # Transitional fallback before DB migration is applied.
+        legacy = (
+            supabase.table("pi_matrix_feishu_drive_tokens")
+            .select("access_token,expires_at")
+            .eq("user_id", user["sub"])
+            .maybe_single()
+            .execute()
+        )
+        if legacy and legacy.data:
+            rows = [
+                {"credential_key": "access_token", "credential_value": legacy.data.get("access_token")},
+                {"credential_key": "expires_at", "credential_value": legacy.data.get("expires_at")},
+            ]
     if not rows:
         return {"authorized": False}
     kv = {str(r.get("credential_key")): str(r.get("credential_value") or "") for r in rows}

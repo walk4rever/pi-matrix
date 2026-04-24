@@ -165,15 +165,33 @@ def _get_drive_token(open_id: str) -> str | None:
         from supabase import create_client
 
         sb = create_client(settings.supabase_url, settings.supabase_service_key)
-        row = (
-            sb.table("pi_matrix_user_credentials")
-            .select("credential_key,credential_value")
-            .eq("provider", "feishu_drive")
-            .eq("external_id", open_id)
-            .in_("credential_key", ["access_token", "expires_at"])
-            .execute()
-        )
-        rows = row.data if row and row.data else []
+        rows = []
+        try:
+            row = (
+                sb.table("pi_matrix_user_credentials")
+                .select("credential_key,credential_value")
+                .eq("provider", "feishu_drive")
+                .eq("external_id", open_id)
+                .in_("credential_key", ["access_token", "expires_at"])
+                .execute()
+            )
+            rows = row.data if row and row.data else []
+        except Exception:
+            rows = []
+        if not rows:
+            # Transitional fallback before DB migration is applied.
+            legacy = (
+                sb.table("pi_matrix_feishu_drive_tokens")
+                .select("access_token,expires_at")
+                .eq("open_id", open_id)
+                .maybe_single()
+                .execute()
+            )
+            if legacy and legacy.data:
+                rows = [
+                    {"credential_key": "access_token", "credential_value": legacy.data.get("access_token")},
+                    {"credential_key": "expires_at", "credential_value": legacy.data.get("expires_at")},
+                ]
         if not rows:
             return None
         kv = {str(r.get("credential_key")): str(r.get("credential_value") or "") for r in rows}
@@ -203,15 +221,34 @@ def _get_user_tokens(open_id: str) -> dict[str, str]:
         from supabase import create_client
 
         sb = create_client(settings.supabase_url, settings.supabase_service_key)
-        row = (
-            sb.table("pi_matrix_user_credentials")
-            .select("credential_key,credential_value")
-            .eq("provider", "feishu_drive")
-            .eq("external_id", open_id)
-            .in_("credential_key", ["access_token", "refresh_token", "expires_at"])
-            .execute()
-        )
-        rows = row.data if row and row.data else []
+        rows = []
+        try:
+            row = (
+                sb.table("pi_matrix_user_credentials")
+                .select("credential_key,credential_value")
+                .eq("provider", "feishu_drive")
+                .eq("external_id", open_id)
+                .in_("credential_key", ["access_token", "refresh_token", "expires_at"])
+                .execute()
+            )
+            rows = row.data if row and row.data else []
+        except Exception:
+            rows = []
+        if not rows:
+            # Transitional fallback before DB migration is applied.
+            legacy = (
+                sb.table("pi_matrix_feishu_drive_tokens")
+                .select("access_token,refresh_token,expires_at")
+                .eq("open_id", open_id)
+                .maybe_single()
+                .execute()
+            )
+            if legacy and legacy.data:
+                rows = [
+                    {"credential_key": "access_token", "credential_value": legacy.data.get("access_token")},
+                    {"credential_key": "refresh_token", "credential_value": legacy.data.get("refresh_token")},
+                    {"credential_key": "expires_at", "credential_value": legacy.data.get("expires_at")},
+                ]
         data = {str(r.get("credential_key")): str(r.get("credential_value") or "") for r in rows}
         tokens = {
             "feishu_access_token": str(data.get("access_token") or ""),
