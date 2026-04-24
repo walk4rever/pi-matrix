@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import os
 from datetime import datetime, timedelta, timezone
 from typing import Any
@@ -11,6 +12,7 @@ from pydantic import BaseModel
 from app.db import supabase
 from app.middleware.auth import get_current_user
 
+logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/dashboard", tags=["dashboard"])
 
 _ONLINE_WINDOW = timedelta(minutes=5)
@@ -464,19 +466,24 @@ def get_memory_file(file_key: str, user: dict = Depends(get_current_user)) -> di
         from fastapi import HTTPException
         raise HTTPException(status_code=404, detail="Unknown memory file")
     user_id = user["sub"]
-    res = (
-        supabase.table("pi_matrix_user_credentials")
-        .select("credential_value")
-        .eq("user_id", user_id)
-        .eq("provider", provider)
-        .eq("credential_key", "content")
-        .maybe_single()
-        .execute()
-    )
-    content: str = ""
-    if res.data:
-        content = str(res.data.get("credential_value") or "")
-    return {"content": content}
+    try:
+        res = (
+            supabase.table("pi_matrix_user_credentials")
+            .select("credential_value")
+            .eq("user_id", user_id)
+            .eq("provider", provider)
+            .eq("credential_key", "content")
+            .maybe_single()
+            .execute()
+        )
+        content: str = ""
+        if res.data:
+            content = str(res.data.get("credential_value") or "")
+        logger.info("get_memory_file user=%s file=%s found=%s len=%d", user_id, file_key, bool(res.data), len(content))
+        return {"content": content}
+    except Exception:
+        logger.exception("get_memory_file failed user=%s file=%s", user_id, file_key)
+        raise
 
 
 def _get_cloud_executor_url(user_id: str) -> str | None:

@@ -8,7 +8,10 @@ bearer = HTTPBearer()
 def get_current_user(
     creds: HTTPAuthorizationCredentials = Security(bearer),
 ) -> dict:
-    result = supabase.auth.get_user(creds.credentials)
+    try:
+        result = supabase.auth.get_user(creds.credentials)
+    except Exception:
+        raise HTTPException(status_code=401, detail="Invalid token")
     if not result or not result.user:
         raise HTTPException(status_code=401, detail="Invalid token")
     return {"sub": result.user.id, "email": result.user.email}
