@@ -469,6 +469,7 @@ def get_memory_file(file_key: str, user: dict = Depends(get_current_user)) -> di
         .select("credential_value")
         .eq("user_id", user_id)
         .eq("provider", provider)
+        .eq("credential_key", "content")
         .maybe_single()
         .execute()
     )
@@ -512,8 +513,13 @@ def update_memory_file(
 
     # Write to DB first (always succeeds even if executor is offline).
     supabase.table("pi_matrix_user_credentials").upsert(
-        {"user_id": user_id, "provider": provider, "credential_value": body.content},
-        on_conflict="user_id,provider",
+        {
+            "user_id": user_id,
+            "provider": provider,
+            "credential_key": "content",
+            "credential_value": body.content,
+        },
+        on_conflict="user_id,provider,credential_key",
     ).execute()
 
     # Best-effort push to executor container.
@@ -552,6 +558,7 @@ def get_soul(user: dict = Depends(get_current_user)) -> dict[str, str]:
         .select("credential_value")
         .eq("user_id", user_id)
         .eq("provider", "soul_md")
+        .eq("credential_key", "content")
         .maybe_single()
         .execute()
     )
@@ -568,8 +575,29 @@ def update_soul(body: SoulUpdateBody, user: dict = Depends(get_current_user)) ->
         {
             "user_id": user_id,
             "provider": "soul_md",
+            "credential_key": "content",
             "credential_value": body.content,
         },
-        on_conflict="user_id,provider",
+        on_conflict="user_id,provider,credential_key",
     ).execute()
+
+    executor_url = _get_cloud_executor_url(user_id)
+    if executor_url:
+        try:
+            resp = httpx.put(
+                f"{executor_url}/files/SOUL",
+                json={"content": body.content},
+                timeout=5.0,
+            )
+            if resp.status_code != 200:
+                import logging
+                logging.getLogger(__name__).warning(
+                    "executor soul push failed user_id=%s status=%d", user_id, resp.status_code
+                )
+        except Exception:
+            import logging
+            logging.getLogger(__name__).warning(
+                "executor soul push skipped (offline?) user_id=%s", user_id
+            )
+
     return {"ok": True}

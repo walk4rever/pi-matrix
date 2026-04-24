@@ -311,8 +311,13 @@ async def _sync_memory_to_db(executor_url: str, user_id: str) -> None:
                     from supabase import create_client
                     sb = create_client(settings.supabase_url, settings.supabase_service_key)
                     sb.table("pi_matrix_user_credentials").upsert(
-                        {"user_id": user_id, "provider": provider, "credential_value": content},
-                        on_conflict="user_id,provider",
+                        {
+                            "user_id": user_id,
+                            "provider": provider,
+                            "credential_key": "content",
+                            "credential_value": content,
+                        },
+                        on_conflict="user_id,provider,credential_key",
                     ).execute()
                 except Exception:
                     logger.exception("memory db sync failed user_id=%s file=%s", user_id, file_key)

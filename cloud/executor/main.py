@@ -61,6 +61,7 @@ _HERMES_HOME = Path("/root/.hermes")
 _MEMORY_FILES: dict[str, Path] = {
     "USER": _HERMES_HOME / "memories" / "USER.md",
     "MEMORY": _HERMES_HOME / "memories" / "MEMORY.md",
+    "SOUL": _HERMES_HOME / "SOUL.md",
 }
 
 # ------------------------------------------------------------------
