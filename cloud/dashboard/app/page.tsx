@@ -12,6 +12,9 @@ export default function HomePage() {
             <img src="/logo.svg" alt="pi-matrix" width={28} height={28} />
             <span className="brand-name">pi<span>-matrix</span></span>
           </Link>
+          <Link href="/console" className="nav-console-link">
+            控制台
+          </Link>
         </div>
       </nav>
 
