@@ -5,7 +5,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Any
 
 import httpx
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 
 from app.db import supabase
 from app.middleware.auth import get_current_user
@@ -76,6 +76,63 @@ def _cloud_endpoint_healthy(endpoint: str | None) -> bool:
     except Exception:
         return False
     return False
+
+
+def _query_run_logs(user_id: str, page: int = 1, page_size: int = 10) -> dict[str, Any]:
+    page = max(page, 1)
+    page_size = max(1, min(page_size, 50))
+    offset = (page - 1) * page_size
+
+    run_logs: list[dict[str, Any]] = []
+    total = 0
+
+    try:
+        total_res = (
+            supabase.table("pi_matrix_execution_logs")
+            .select("id", count="exact")
+            .eq("user_id", user_id)
+            .limit(1)
+            .execute()
+        )
+        total = int(getattr(total_res, "count", 0) or 0)
+    except Exception:
+        total = 0
+
+    try:
+        log_res = (
+            supabase.table("pi_matrix_execution_logs")
+            .select("created_at,request_text,status,error_code,error_message,response_preview,files_count")
+            .eq("user_id", user_id)
+            .order("created_at", desc=True)
+            .range(offset, offset + page_size - 1)
+            .execute()
+        )
+        rows = log_res.data or []
+        for row in rows:
+            status_text = "成功" if str(row.get("status") or "success") == "success" else "失败"
+            reason = (
+                str(row.get("error_message") or row.get("error_code") or "").strip()
+                if status_text == "失败"
+                else "执行完成"
+            )
+            if not reason:
+                reason = "执行失败"
+            files_count = int(row.get("files_count") or 0)
+            output_text = f"{files_count} 个文件" if files_count > 0 else "-"
+            run_logs.append(
+                {
+                    "time": row.get("created_at"),
+                    "task": _short_text(str(row.get("request_text") or "执行任务")),
+                    "status": status_text,
+                    "reason": _short_text(reason, 80),
+                    "output": output_text,
+                    "retryable": status_text == "失败",
+                }
+            )
+    except Exception:
+        run_logs = []
+
+    return {"items": run_logs, "total": total, "page": page, "page_size": page_size}
 
 
 @router.get("/overview")
@@ -298,40 +355,8 @@ def dashboard_overview(user: dict = Depends(get_current_user)):
         },
     ]
 
-    run_logs: list[dict[str, Any]] = []
-    try:
-        log_res = (
-            supabase.table("pi_matrix_execution_logs")
-            .select("created_at,request_text,status,error_code,error_message,response_preview,files_count")
-            .eq("user_id", user_id)
-            .order("created_at", desc=True)
-            .limit(30)
-            .execute()
-        )
-        rows = log_res.data or []
-        for row in rows:
-            status_text = "成功" if str(row.get("status") or "success") == "success" else "失败"
-            reason = (
-                str(row.get("error_message") or row.get("error_code") or "").strip()
-                if status_text == "失败"
-                else "执行完成"
-            )
-            if not reason:
-                reason = "执行失败"
-            files_count = int(row.get("files_count") or 0)
-            output_text = f"{files_count} 个文件" if files_count > 0 else "-"
-            run_logs.append(
-                {
-                    "time": row.get("created_at"),
-                    "task": _short_text(str(row.get("request_text") or "执行任务")),
-                    "status": status_text,
-                    "reason": _short_text(reason, 80),
-                    "output": output_text,
-                    "retryable": status_text == "失败",
-                }
-            )
-    except Exception:
-        run_logs = []
+    log_page = _query_run_logs(user_id=user_id, page=1, page_size=10)
+    run_logs: list[dict[str, Any]] = list(log_page.get("items") or [])
 
     if not run_logs:
         # Backward-compatible fallback before execution log table is available.
@@ -364,3 +389,58 @@ def dashboard_overview(user: dict = Depends(get_current_user)):
         "memory_files": memory_files,
         "run_logs": run_logs,
     }
+
+
+@router.get("/execution-logs")
+def dashboard_execution_logs(
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=10, ge=1, le=50),
+    user: dict = Depends(get_current_user),
+):
+    user_id = user["sub"]
+    log_page = _query_run_logs(user_id=user_id, page=page, page_size=page_size)
+
+    if log_page["items"]:
+        return log_page
+
+    # Fallback for users without log-table records yet.
+    memory_total = 0
+    try:
+        m_total_res = (
+            supabase.table("pi_matrix_memories")
+            .select("id", count="exact")
+            .eq("user_id", user_id)
+            .limit(1)
+            .execute()
+        )
+        memory_total = int(getattr(m_total_res, "count", 0) or 0)
+    except Exception:
+        memory_total = 0
+
+    memory_res = (
+        supabase.table("pi_matrix_memories")
+        .select("content,created_at")
+        .eq("user_id", user_id)
+        .order("created_at", desc=True)
+        .range((page - 1) * page_size, page * page_size - 1)
+        .execute()
+    )
+    rows = memory_res.data or []
+    failure_keywords = ("fail", "error", "exception", "timeout", "失败", "错误", "超时")
+    fallback_items = []
+    for row in rows:
+        content = str(row.get("content") or "")
+        lower = content.lower()
+        failed = any(k in lower for k in failure_keywords)
+        fallback_items.append(
+            {
+                "time": row.get("created_at"),
+                "task": _short_text(content or "执行事件"),
+                "status": "失败" if failed else "成功",
+                "reason": "检测到失败关键词" if failed else "执行记录",
+                "output": "-",
+                "retryable": failed,
+            }
+        )
+
+    return {"items": fallback_items, "total": memory_total, "page": page, "page_size": page_size}
