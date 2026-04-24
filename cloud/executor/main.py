@@ -34,7 +34,7 @@ app = FastAPI(title="pi-matrix executor", version="0.2.0")
 GATEWAY_URL = os.environ["GATEWAY_URL"]      # LiteLLM Proxy
 GATEWAY_KEY = os.environ["GATEWAY_KEY"]      # LiteLLM master key
 HERMES_MODEL = os.environ.get("HERMES_MODEL", "default")
-PROGRESS_NOTIFY_URL = os.environ.get("PROGRESS_NOTIFY_URL", "http://platform-gateway:8000/internal/notify")
+PROGRESS_NOTIFY_URL = os.environ.get("PROGRESS_NOTIFY_URL", "http://message:8000/internal/notify")
 PROGRESS_NOTIFY_SECRET = os.environ.get("PROGRESS_NOTIFY_SECRET", GATEWAY_KEY)
 
 HERMES_ENABLED_TOOLSETS = [
@@ -56,6 +56,12 @@ HERMES_ENABLED_TOOLSETS = [
 _WORKSPACE = Path(os.environ.get("HERMES_WORKSPACE_DIR", "/root/.hermes/workspace"))
 _UPLOADS_DIR = _WORKSPACE / "uploads"
 _UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
+
+_HERMES_HOME = Path("/root/.hermes")
+_MEMORY_FILES: dict[str, Path] = {
+    "USER": _HERMES_HOME / "memories" / "USER.md",
+    "MEMORY": _HERMES_HOME / "memories" / "MEMORY.md",
+}
 
 # ------------------------------------------------------------------
 # Models
@@ -378,4 +384,29 @@ async def execute(req: ExecuteRequest):
 
 @app.get("/health")
 def health():
+    return {"ok": True}
+
+
+@app.get("/files/{file_key}")
+def read_memory_file(file_key: str):
+    path = _MEMORY_FILES.get(file_key.upper())
+    if path is None:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=404, detail="Unknown file key")
+    content = path.read_text(encoding="utf-8") if path.exists() else ""
+    return {"content": content}
+
+
+class FileWriteBody(BaseModel):
+    content: str
+
+
+@app.put("/files/{file_key}")
+def write_memory_file(file_key: str, body: FileWriteBody):
+    path = _MEMORY_FILES.get(file_key.upper())
+    if path is None:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=404, detail="Unknown file key")
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(body.content, encoding="utf-8")
     return {"ok": True}

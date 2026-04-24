@@ -37,7 +37,7 @@ import r2
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
 
-app = FastAPI(title="pi-matrix platform-gateway", version="0.2.0")
+app = FastAPI(title="pi-matrix message", version="0.2.0")
 
 # ------------------------------------------------------------------
 # Components
@@ -292,6 +292,32 @@ def _get_user_id(open_id: str) -> str | None:
     except Exception:
         logger.exception("resolve user_id failed open_id=%s", open_id)
         return None
+
+
+async def _sync_memory_to_db(executor_url: str, user_id: str) -> None:
+    """Pull USER.md and MEMORY.md from executor and upsert to Supabase DB."""
+    _PROVIDER_MAP = {"USER": "memory_user_md", "MEMORY": "memory_md"}
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            for file_key, provider in _PROVIDER_MAP.items():
+                try:
+                    resp = await client.get(f"{executor_url}/files/{file_key}")
+                    if resp.status_code != 200:
+                        continue
+                    content = resp.json().get("content") or ""
+                except Exception:
+                    continue
+                try:
+                    from supabase import create_client
+                    sb = create_client(settings.supabase_url, settings.supabase_service_key)
+                    sb.table("pi_matrix_user_credentials").upsert(
+                        {"user_id": user_id, "provider": provider, "credential_value": content},
+                        on_conflict="user_id,provider",
+                    ).execute()
+                except Exception:
+                    logger.exception("memory db sync failed user_id=%s file=%s", user_id, file_key)
+    except Exception:
+        logger.exception("memory sync failed user_id=%s", user_id)
 
 
 def _log_execution(
@@ -691,6 +717,12 @@ async def _on_message(event: MessageEvent) -> Optional[str]:
         response_text=response_text,
         files_count=len(files),
     )
+
+    # Fire-and-forget: sync memory files back to DB after successful execution.
+    if exec_status == "success" and executor_url:
+        user_id = _get_user_id(open_id)
+        if user_id:
+            asyncio.create_task(_sync_memory_to_db(executor_url, user_id))
 
     return None  # We already sent manually
 

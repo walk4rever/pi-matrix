@@ -6,6 +6,7 @@ from typing import Any
 
 import httpx
 from fastapi import APIRouter, Depends, Query
+from pydantic import BaseModel
 
 from app.db import supabase
 from app.middleware.auth import get_current_user
@@ -444,3 +445,131 @@ def dashboard_execution_logs(
         )
 
     return {"items": fallback_items, "total": memory_total, "page": page, "page_size": page_size}
+
+
+_MEMORY_FILE_PROVIDERS: dict[str, str] = {
+    "USER": "memory_user_md",
+    "MEMORY": "memory_md",
+}
+
+
+class MemoryFileBody(BaseModel):
+    content: str
+
+
+@router.get("/memory/{file_key}")
+def get_memory_file(file_key: str, user: dict = Depends(get_current_user)) -> dict[str, str]:
+    provider = _MEMORY_FILE_PROVIDERS.get(file_key.upper())
+    if not provider:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=404, detail="Unknown memory file")
+    user_id = user["sub"]
+    res = (
+        supabase.table("pi_matrix_user_credentials")
+        .select("credential_value")
+        .eq("user_id", user_id)
+        .eq("provider", provider)
+        .maybe_single()
+        .execute()
+    )
+    content: str = ""
+    if res.data:
+        content = str(res.data.get("credential_value") or "")
+    return {"content": content}
+
+
+def _get_cloud_executor_url(user_id: str) -> str | None:
+    """Return the cloud executor base URL for a user, or None."""
+    try:
+        res = (
+            supabase.table("pi_matrix_devices")
+            .select("endpoint")
+            .eq("user_id", user_id)
+            .eq("instance_type", "cloud")
+            .maybe_single()
+            .execute()
+        )
+        if not res.data:
+            return None
+        url = str(res.data.get("endpoint") or "").strip().rstrip("/")
+        for suffix in ("/inbox", "/execute"):
+            if url.endswith(suffix):
+                url = url[: -len(suffix)]
+        return url or None
+    except Exception:
+        return None
+
+
+@router.put("/memory/{file_key}")
+def update_memory_file(
+    file_key: str, body: MemoryFileBody, user: dict = Depends(get_current_user)
+) -> dict[str, bool]:
+    provider = _MEMORY_FILE_PROVIDERS.get(file_key.upper())
+    if not provider:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=404, detail="Unknown memory file")
+    user_id = user["sub"]
+
+    # Write to DB first (always succeeds even if executor is offline).
+    supabase.table("pi_matrix_user_credentials").upsert(
+        {"user_id": user_id, "provider": provider, "credential_value": body.content},
+        on_conflict="user_id,provider",
+    ).execute()
+
+    # Best-effort push to executor container.
+    executor_url = _get_cloud_executor_url(user_id)
+    if executor_url:
+        try:
+            resp = httpx.put(
+                f"{executor_url}/files/{file_key.upper()}",
+                json={"content": body.content},
+                timeout=5.0,
+            )
+            if resp.status_code != 200:
+                import logging
+                logging.getLogger(__name__).warning(
+                    "executor file push failed user_id=%s file=%s status=%d",
+                    user_id, file_key, resp.status_code,
+                )
+        except Exception:
+            import logging
+            logging.getLogger(__name__).warning(
+                "executor file push skipped (offline?) user_id=%s file=%s", user_id, file_key
+            )
+
+    return {"ok": True}
+
+
+class SoulUpdateBody(BaseModel):
+    content: str
+
+
+@router.get("/soul")
+def get_soul(user: dict = Depends(get_current_user)) -> dict[str, str]:
+    user_id = user["sub"]
+    res = (
+        supabase.table("pi_matrix_user_credentials")
+        .select("credential_value")
+        .eq("user_id", user_id)
+        .eq("provider", "soul_md")
+        .maybe_single()
+        .execute()
+    )
+    content: str = ""
+    if res.data:
+        content = str(res.data.get("credential_value") or "")
+    return {"content": content}
+
+
+@router.put("/soul")
+def update_soul(body: SoulUpdateBody, user: dict = Depends(get_current_user)) -> dict[str, bool]:
+    user_id = user["sub"]
+    supabase.table("pi_matrix_user_credentials").upsert(
+        {
+            "user_id": user_id,
+            "provider": "soul_md",
+            "credential_value": body.content,
+        },
+        on_conflict="user_id,provider",
+    ).execute()
+    return {"ok": True}

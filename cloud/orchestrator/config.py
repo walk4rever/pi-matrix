@@ -8,7 +8,7 @@ class Settings(BaseSettings):
     executor_image: str = "pi-matrix/executor:latest"
     gateway_url: str = "http://gateway:4000/v1"
     gateway_key: str                # litellm master key
-    platform_gateway_url: str = "http://platform-gateway:8000"
+    platform_gateway_url: str = "http://message:8000"
     hermes_model: str = "default"
     # Auxiliary vision routing for Hermes tools (vision_analyze, browser_vision, etc.)
     auxiliary_vision_provider: str = "main"

@@ -14,13 +14,12 @@ services:
       interval: 30s
       retries: 3
 
-  # Platform Gateway — central Feishu adapter + session router
-  # Replaces the old router + hermes_wrapper pair.
+  # Message — central Feishu adapter + session router
   # Holds Feishu credentials; routes execution to per-user stateless executors.
-  platform-gateway:
+  message:
     container_name: pi-matrix-message
     build:
-      context: ../cloud/platform-gateway
+      context: ../cloud/message
     restart: always
     env_file: .env
     depends_on:

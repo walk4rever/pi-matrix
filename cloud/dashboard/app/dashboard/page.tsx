@@ -104,6 +104,33 @@ export default function DashboardPage() {
   const profileRef = useRef<HTMLDivElement | null>(null);
   const totalLogPages = Math.max(1, Math.ceil(logTotal / logPageSize));
 
+  // Memory files (USER.md / MEMORY.md)
+  const [memoryFiles, setMemoryFiles] = useState<Record<string, string>>({ USER: "", MEMORY: "" });
+  const [memoryModal, setMemoryModal] = useState<{ key: string; editing: boolean } | null>(null);
+  const [editMemoryContent, setEditMemoryContent] = useState("");
+  const [memorySaving, setMemorySaving] = useState(false);
+  const [memoryError, setMemoryError] = useState("");
+
+  // SOUL.md
+  const [soulContent, setSoulContent] = useState("");
+  const [soulEditing, setSoulEditing] = useState(false);
+  const [editSoulContent, setEditSoulContent] = useState("");
+  const [soulSaving, setSoulSaving] = useState(false);
+  const [soulError, setSoulError] = useState("");
+
+  // Edit profile modal
+  const [profileModalOpen, setProfileModalOpen] = useState(false);
+  const [editName, setEditName] = useState("");
+  const [profileSaving, setProfileSaving] = useState(false);
+  const [profileError, setProfileError] = useState("");
+
+  // Change password modal
+  const [passwordModalOpen, setPasswordModalOpen] = useState(false);
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [passwordSaving, setPasswordSaving] = useState(false);
+  const [passwordError, setPasswordError] = useState("");
+
   async function loadRunLogs(accessToken: string, page: number) {
     setLogLoading(true);
     try {
@@ -184,6 +211,30 @@ export default function DashboardPage() {
         if (!mounted) return;
         setOverview(dataJson);
         await loadRunLogs(session.access_token, 1);
+
+        // Load SOUL.md + memory files (non-blocking)
+        try {
+          const [soulResp, userMdResp, memoryMdResp] = await Promise.all([
+            fetch(`${API_URL}/dashboard/soul`, { headers: { Authorization: `Bearer ${session.access_token}` }, cache: "no-store" }),
+            fetch(`${API_URL}/dashboard/memory/USER`, { headers: { Authorization: `Bearer ${session.access_token}` }, cache: "no-store" }),
+            fetch(`${API_URL}/dashboard/memory/MEMORY`, { headers: { Authorization: `Bearer ${session.access_token}` }, cache: "no-store" }),
+          ]);
+          if (!mounted) return;
+          if (soulResp.ok) {
+            const j = (await soulResp.json()) as { content: string };
+            setSoulContent(j.content ?? "");
+          }
+          if (userMdResp.ok) {
+            const j = (await userMdResp.json()) as { content: string };
+            setMemoryFiles((prev) => ({ ...prev, USER: j.content ?? "" }));
+          }
+          if (memoryMdResp.ok) {
+            const j = (await memoryMdResp.json()) as { content: string };
+            setMemoryFiles((prev) => ({ ...prev, MEMORY: j.content ?? "" }));
+          }
+        } catch {
+          // non-critical
+        }
       } catch (err) {
         if (!mounted) return;
         setError(err instanceof Error ? err.message : "加载失败，请稍后重试。");
@@ -203,6 +254,129 @@ export default function DashboardPage() {
     router.replace("/");
   }
 
+  function onOpenProfileModal() {
+    setEditName(profileName);
+    setProfileError("");
+    setProfileModalOpen(true);
+    setMenuOpen(false);
+  }
+
+  async function onSaveProfile(e: React.FormEvent) {
+    e.preventDefault();
+    const name = editName.trim();
+    if (!name) return;
+    setProfileSaving(true);
+    setProfileError("");
+    const { error: updateError } = await supabase.auth.updateUser({
+      data: { full_name: name },
+    });
+    setProfileSaving(false);
+    if (updateError) {
+      setProfileError(updateError.message || "保存失败，请重试。");
+      return;
+    }
+    setProfileName(name);
+    setProfileModalOpen(false);
+  }
+
+  function onOpenPasswordModal() {
+    setNewPassword("");
+    setConfirmPassword("");
+    setPasswordError("");
+    setPasswordModalOpen(true);
+    setMenuOpen(false);
+  }
+
+  function onOpenMemoryModal(key: string, editing: boolean) {
+    setEditMemoryContent(memoryFiles[key] ?? "");
+    setMemoryError("");
+    setMemoryModal({ key, editing });
+  }
+
+  function onCloseMemoryModal() {
+    setMemoryModal(null);
+    setMemoryError("");
+  }
+
+  async function onSaveMemoryFile(e: React.FormEvent) {
+    e.preventDefault();
+    if (!memoryModal) return;
+    setMemorySaving(true);
+    setMemoryError("");
+    try {
+      const resp = await fetch(`${API_URL}/dashboard/memory/${memoryModal.key}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${sessionToken}` },
+        body: JSON.stringify({ content: editMemoryContent }),
+      });
+      if (!resp.ok) throw new Error((await resp.text()) || `HTTP ${resp.status}`);
+      setMemoryFiles((prev) => ({ ...prev, [memoryModal.key]: editMemoryContent }));
+      setMemoryModal(null);
+    } catch (err) {
+      setMemoryError(err instanceof Error ? err.message : "保存失败，请重试。");
+    } finally {
+      setMemorySaving(false);
+    }
+  }
+
+  function onOpenSoulEditor() {
+    setEditSoulContent(soulContent);
+    setSoulError("");
+    setSoulEditing(true);
+  }
+
+  function onCancelSoulEditor() {
+    setSoulEditing(false);
+    setSoulError("");
+  }
+
+  async function onSaveSoul(e: React.FormEvent) {
+    e.preventDefault();
+    setSoulSaving(true);
+    setSoulError("");
+    try {
+      const resp = await fetch(`${API_URL}/dashboard/soul`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${sessionToken}`,
+        },
+        body: JSON.stringify({ content: editSoulContent }),
+      });
+      if (!resp.ok) {
+        const body = await resp.text();
+        throw new Error(body || `HTTP ${resp.status}`);
+      }
+      setSoulContent(editSoulContent);
+      setSoulEditing(false);
+    } catch (err) {
+      setSoulError(err instanceof Error ? err.message : "保存失败，请重试。");
+    } finally {
+      setSoulSaving(false);
+    }
+  }
+
+  async function onSavePassword(e: React.FormEvent) {
+    e.preventDefault();
+    if (newPassword.length < 8) {
+      setPasswordError("密码至少需要 8 位。");
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setPasswordError("两次密码输入不一致。");
+      return;
+    }
+    setPasswordSaving(true);
+    setPasswordError("");
+    const { error: updateError } = await supabase.auth.updateUser({ password: newPassword });
+    setPasswordSaving(false);
+    if (updateError) {
+      setPasswordError(updateError.message || "修改失败，请重试。");
+      return;
+    }
+    setPasswordModalOpen(false);
+  }
+
   const avatar = (profileName || "U").slice(0, 1).toUpperCase();
 
   async function onRefreshLogs() {
@@ -217,14 +391,14 @@ export default function DashboardPage() {
   }
 
   return (
-    <main className="workspace-page">
+    <>
       <header className="workspace-header">
-        <Link href="/" className="workspace-header-left workspace-brand-link">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/logo.svg" alt="pi-matrix" width={24} height={24} />
-          <p className="workspace-brand-text">pi-matrix</p>
-        </Link>
-        <div className="workspace-header-right">
+        <div className="container nav-inner">
+          <Link href="/" className="brand workspace-brand-link">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/logo.svg" alt="pi-matrix" width={28} height={28} />
+            <span className="brand-name">pi<span>-matrix</span></span>
+          </Link>
           <div className="workspace-profile-wrap" ref={profileRef}>
             <button
               className="workspace-profile"
@@ -241,14 +415,15 @@ export default function DashboardPage() {
 
             {menuOpen && (
               <div className="workspace-profile-menu" role="menu">
-                <button className="workspace-profile-menu-item" role="menuitem">编辑资料</button>
-                <button className="workspace-profile-menu-item" role="menuitem">重设密码</button>
+                <button className="workspace-profile-menu-item" role="menuitem" onClick={onOpenProfileModal}>编辑资料</button>
+                <button className="workspace-profile-menu-item" role="menuitem" onClick={onOpenPasswordModal}>修改密码</button>
                 <button className="workspace-profile-menu-item danger" role="menuitem" onClick={onLogout}>退出登录</button>
               </div>
             )}
           </div>
         </div>
       </header>
+      <main className="workspace-page">
 
       {loading && (
         <section className="workspace-card">
@@ -324,24 +499,73 @@ export default function DashboardPage() {
           </section>
 
           <section className="workspace-card">
+            <div className="workspace-card-head">
+              <h2 className="workspace-card-title">人格设定</h2>
+              {!soulEditing && (
+                <button className="workspace-text-btn" onClick={onOpenSoulEditor} title="编辑 SOUL.md">
+                  编辑
+                </button>
+              )}
+            </div>
+            <p className="workspace-card-desc">
+              定义 Hermes 的行为准则、语气风格与工作方式（SOUL.md）。直接影响"懂你"程度，建议亲自调整。
+            </p>
+            {!soulEditing ? (
+              <div className={`soul-preview${soulContent ? "" : " empty"}`}>
+                {soulContent
+                  ? soulContent.split("\n").slice(0, 6).join("\n") + (soulContent.split("\n").length > 6 ? "\n…" : "")
+                  : "尚未设置人格文件。点击「编辑」开始定义 Hermes 的性格。"}
+              </div>
+            ) : (
+              <form onSubmit={onSaveSoul}>
+                <textarea
+                  className="soul-textarea"
+                  value={editSoulContent}
+                  onChange={(e) => setEditSoulContent(e.target.value)}
+                  placeholder="用自然语言描述 Hermes 的人格、行为准则与语气风格…"
+                  autoFocus
+                />
+                {soulError && <p className="form-error" style={{ marginBottom: "0.5rem" }}>{soulError}</p>}
+                <div className="modal-actions" style={{ justifyContent: "flex-start" }}>
+                  <button type="button" className="btn-secondary" onClick={onCancelSoulEditor}>取消</button>
+                  <button type="submit" className="btn-primary" disabled={soulSaving}>
+                    {soulSaving ? "保存中..." : "保存"}
+                  </button>
+                </div>
+              </form>
+            )}
+          </section>
+
+          <section className="workspace-card">
             <h2 className="workspace-card-title">记忆管理</h2>
-            <p className="workspace-card-desc">查看 Hermes 两个核心记忆文件</p>
+            <p className="workspace-card-desc">Hermes 自动维护的两个核心记忆文件，影响"懂你"程度，可手动查看或纠正。</p>
             <div className="workspace-grid-two">
-              {overview.memory_files.map((item) => (
-                <article key={item.file} className="workspace-capability-item">
-                  <div>
-                    <p className="workspace-item-title">{item.file}</p>
-                    <p className="workspace-item-hint">{item.role}</p>
-                    <p className="workspace-item-hint">最近更新：{item.updated_at}</p>
-                    <p className="workspace-item-hint">{item.summary}</p>
-                    <div className="workspace-inline-actions" style={{ marginTop: "0.5rem" }}>
-                      <button className="workspace-action-link">查看文件</button>
-                      <button className="workspace-action-link">编辑文件</button>
+              {overview.memory_files.map((item) => {
+                const fileKey = item.file.replace(".md", "").toUpperCase();
+                const content = memoryFiles[fileKey] ?? "";
+                const preview = content
+                  ? content.split("\n").slice(0, 4).join("\n") + (content.split("\n").length > 4 ? "\n…" : "")
+                  : "尚无内容";
+                return (
+                  <article key={item.file} className="workspace-capability-item" style={{ flexDirection: "column", alignItems: "flex-start", gap: "0.6rem" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", width: "100%", alignItems: "flex-start" }}>
+                      <div>
+                        <p className="workspace-item-title">{item.file}</p>
+                        <p className="workspace-item-hint">{item.role}</p>
+                        <p className="workspace-item-hint">最近更新：{item.updated_at}</p>
+                      </div>
+                      <span className={`workspace-pill ${tone(item.status)}`}>{item.status}</span>
                     </div>
-                  </div>
-                  <span className={`workspace-pill ${tone(item.status)}`}>{item.status}</span>
-                </article>
-              ))}
+                    <div className={`soul-preview${content ? "" : " empty"}`} style={{ marginBottom: 0, width: "100%", boxSizing: "border-box" }}>
+                      {preview}
+                    </div>
+                    <div className="workspace-inline-actions">
+                      <button className="workspace-action-link" onClick={() => onOpenMemoryModal(fileKey, false)}>查看文件</button>
+                      <button className="workspace-action-link" onClick={() => onOpenMemoryModal(fileKey, true)}>编辑文件</button>
+                    </div>
+                  </article>
+                );
+              })}
             </div>
           </section>
 
@@ -419,5 +643,119 @@ export default function DashboardPage() {
         </>
       )}
     </main>
+
+    {memoryModal && (
+      <div className="modal-overlay" onClick={onCloseMemoryModal}>
+        <div className="modal-card" style={{ maxWidth: 560 }} onClick={(e) => e.stopPropagation()}>
+          <p className="modal-title">
+            {memoryModal.key === "USER" ? "USER.md — 用户画像" : "MEMORY.md — 工作记忆"}
+          </p>
+          {memoryModal.editing ? (
+            <form onSubmit={onSaveMemoryFile}>
+              <textarea
+                className="soul-textarea"
+                value={editMemoryContent}
+                onChange={(e) => setEditMemoryContent(e.target.value)}
+                placeholder="文件内容为空，可手动填入初始内容…"
+                autoFocus
+              />
+              {memoryError && <p className="form-error" style={{ marginBottom: "0.5rem" }}>{memoryError}</p>}
+              <div className="modal-actions">
+                <button type="button" className="btn-secondary" onClick={onCloseMemoryModal}>取消</button>
+                <button type="submit" className="btn-primary" disabled={memorySaving}>
+                  {memorySaving ? "保存中..." : "保存"}
+                </button>
+              </div>
+            </form>
+          ) : (
+            <>
+              <div className={`soul-preview${memoryFiles[memoryModal.key] ? "" : " empty"}`} style={{ maxHeight: 360, overflowY: "auto" }}>
+                {memoryFiles[memoryModal.key] || "该文件暂无内容。"}
+              </div>
+              <div className="modal-actions">
+                <button type="button" className="btn-secondary" onClick={onCloseMemoryModal}>关闭</button>
+                <button type="button" className="btn-primary" onClick={() => setMemoryModal({ ...memoryModal, editing: true })}>
+                  编辑
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+    )}
+
+    {profileModalOpen && (
+      <div className="modal-overlay" onClick={() => setProfileModalOpen(false)}>
+        <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+          <p className="modal-title">编辑资料</p>
+          <form onSubmit={onSaveProfile}>
+            <div className="form-group">
+              <div>
+                <label className="form-label">显示名称</label>
+                <input
+                  type="text"
+                  className="form-input"
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  placeholder="请输入名称"
+                  required
+                  autoFocus
+                />
+              </div>
+              {profileError && <p className="form-error">{profileError}</p>}
+            </div>
+            <div className="modal-actions">
+              <button type="button" className="btn-secondary" onClick={() => setProfileModalOpen(false)}>取消</button>
+              <button type="submit" className="btn-primary" disabled={profileSaving}>
+                {profileSaving ? "保存中..." : "保存"}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    )}
+
+    {passwordModalOpen && (
+      <div className="modal-overlay" onClick={() => setPasswordModalOpen(false)}>
+        <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+          <p className="modal-title">修改密码</p>
+          <form onSubmit={onSavePassword}>
+            <div className="form-group">
+              <div>
+                <label className="form-label">新密码</label>
+                <input
+                  type="password"
+                  className="form-input"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  placeholder="至少 8 位"
+                  required
+                  autoFocus
+                />
+              </div>
+              <div>
+                <label className="form-label">确认密码</label>
+                <input
+                  type="password"
+                  className="form-input"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="再次输入密码"
+                  required
+                />
+              </div>
+              {passwordError && <p className="form-error">{passwordError}</p>}
+            </div>
+            <div className="modal-actions">
+              <button type="button" className="btn-secondary" onClick={() => setPasswordModalOpen(false)}>取消</button>
+              <button type="submit" className="btn-primary" disabled={passwordSaving}>
+                {passwordSaving ? "修改中..." : "确认修改"}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    )}
+    </>
   );
 }
