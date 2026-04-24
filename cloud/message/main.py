@@ -562,6 +562,7 @@ async def _on_message(event: MessageEvent) -> Optional[str]:
     # Load transcript + hygiene
     history = _session_store.load_transcript(session_entry.session_id)
     history = await _maybe_compress(session_entry.session_id, history)
+    resolved_user_id = _get_user_id(open_id)
 
     # Build context prompt (minimal; executor can enrich)
     context_prompt = (
@@ -591,7 +592,7 @@ async def _on_message(event: MessageEvent) -> Optional[str]:
         "message": text,
         "history": history,
         "context_prompt": context_prompt,
-        "ephemeral_system_prompt": _get_soul_prompt(user_id),
+        "ephemeral_system_prompt": _get_soul_prompt(resolved_user_id) if resolved_user_id else "",
         "session_id": session_entry.session_id,
         "user_id": open_id,
         "attachments": attachments,
@@ -757,9 +758,8 @@ async def _on_message(event: MessageEvent) -> Optional[str]:
 
     # Fire-and-forget: sync memory files back to DB after successful execution.
     if exec_status == "success" and executor_url:
-        user_id = _get_user_id(open_id)
-        if user_id:
-            asyncio.create_task(_sync_memory_to_db(executor_url, user_id))
+        if resolved_user_id:
+            asyncio.create_task(_sync_memory_to_db(executor_url, resolved_user_id))
 
     return None  # We already sent manually
 
