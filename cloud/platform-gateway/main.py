@@ -166,16 +166,19 @@ def _get_drive_token(open_id: str) -> str | None:
 
         sb = create_client(settings.supabase_url, settings.supabase_service_key)
         row = (
-            sb.table("pi_matrix_feishu_drive_tokens")
-            .select("access_token,expires_at")
-            .eq("open_id", open_id)
-            .maybe_single()
+            sb.table("pi_matrix_user_credentials")
+            .select("credential_key,credential_value")
+            .eq("provider", "feishu_drive")
+            .eq("external_id", open_id)
+            .in_("credential_key", ["access_token", "expires_at"])
             .execute()
         )
-        if not row or not row.data:
+        rows = row.data if row and row.data else []
+        if not rows:
             return None
-        token = (row.data.get("access_token") or "").strip()
-        expires_at_raw = (row.data.get("expires_at") or "").strip()
+        kv = {str(r.get("credential_key")): str(r.get("credential_value") or "") for r in rows}
+        token = (kv.get("access_token") or "").strip()
+        expires_at_raw = (kv.get("expires_at") or "").strip()
         if not token or not expires_at_raw:
             return None
         expires_at = datetime.fromisoformat(expires_at_raw.replace("Z", "+00:00"))
@@ -201,13 +204,15 @@ def _get_user_tokens(open_id: str) -> dict[str, str]:
 
         sb = create_client(settings.supabase_url, settings.supabase_service_key)
         row = (
-            sb.table("pi_matrix_feishu_drive_tokens")
-            .select("access_token,refresh_token,expires_at")
-            .eq("open_id", open_id)
-            .maybe_single()
+            sb.table("pi_matrix_user_credentials")
+            .select("credential_key,credential_value")
+            .eq("provider", "feishu_drive")
+            .eq("external_id", open_id)
+            .in_("credential_key", ["access_token", "refresh_token", "expires_at"])
             .execute()
         )
-        data = row.data if row and row.data else {}
+        rows = row.data if row and row.data else []
+        data = {str(r.get("credential_key")): str(r.get("credential_value") or "") for r in rows}
         tokens = {
             "feishu_access_token": str(data.get("access_token") or ""),
             "feishu_refresh_token": str(data.get("refresh_token") or ""),
