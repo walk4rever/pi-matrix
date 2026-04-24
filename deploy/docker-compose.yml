@@ -1,7 +1,10 @@
+name: pi-matrix
+
 services:
 
   # LiteLLM Proxy — LLM Gateway
   gateway:
+    container_name: pi-matrix-llm
     build:
       context: ../cloud/gateway
     restart: always
@@ -15,6 +18,7 @@ services:
   # Replaces the old router + hermes_wrapper pair.
   # Holds Feishu credentials; routes execution to per-user stateless executors.
   platform-gateway:
+    container_name: pi-matrix-message
     build:
       context: ../cloud/platform-gateway
     restart: always
@@ -28,6 +32,7 @@ services:
       retries: 3
 
   api:
+    container_name: pi-matrix-api
     build:
       context: ../cloud/api
     restart: always
@@ -40,6 +45,7 @@ services:
       retries: 3
 
   orchestrator:
+    container_name: pi-matrix-orchestrator
     build:
       context: ../cloud/orchestrator
     restart: always
