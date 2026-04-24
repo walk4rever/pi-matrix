@@ -4,6 +4,7 @@ import os
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
+import httpx
 from fastapi import APIRouter, Depends
 
 from app.db import supabase
@@ -56,6 +57,27 @@ def _short_text(text: str, max_len: int = 56) -> str:
     return compact[: max_len - 3] + "..."
 
 
+def _cloud_endpoint_healthy(endpoint: str | None) -> bool:
+    if not endpoint:
+        return False
+    base = str(endpoint).strip().rstrip("/")
+    if not base:
+        return False
+    candidates = [f"{base}/health", base]
+    try:
+        with httpx.Client(timeout=2.0) as client:
+            for url in candidates:
+                try:
+                    resp = client.get(url)
+                    if resp.status_code < 500:
+                        return True
+                except Exception:
+                    continue
+    except Exception:
+        return False
+    return False
+
+
 @router.get("/overview")
 def dashboard_overview(user: dict = Depends(get_current_user)):
     user_id = user["sub"]
@@ -73,15 +95,30 @@ def dashboard_overview(user: dict = Depends(get_current_user)):
     online_count = 0
     for row in device_rows:
         last_seen = _parse_dt(str(row.get("last_seen") or ""))
-        status = _device_status(last_seen)
-        if status == "运行中":
-            online_count += 1
         instance_type = str(row.get("instance_type") or "mac")
         is_cloud = instance_type == "cloud"
+        endpoint = str(row.get("endpoint") or "").strip()
+        cloud_health_ok = _cloud_endpoint_healthy(endpoint) if is_cloud else False
 
-        detail = "容器在线。" if is_cloud and status == "运行中" else "等待设备心跳。"
-        if is_cloud and row.get("endpoint"):
-            detail = "云端执行入口可达。" if status == "运行中" else "云端执行入口已注册，等待新心跳。"
+        status = _device_status(last_seen)
+        if is_cloud and cloud_health_ok:
+            status = "运行中"
+        if status == "运行中":
+            online_count += 1
+
+        if is_cloud:
+            if cloud_health_ok:
+                detail = "云端容器健康，执行入口可达。"
+            elif endpoint:
+                detail = "云端执行入口已注册，等待容器恢复。"
+            else:
+                detail = "云端执行入口未注册。"
+        else:
+            detail = "设备在线。" if status == "运行中" else "等待设备心跳。"
+
+        last_seen_display = _humanize_time_ago(last_seen)
+        if is_cloud and cloud_health_ok and last_seen_display == "未知":
+            last_seen_display = "健康检查在线"
 
         devices.append(
             {
@@ -90,7 +127,7 @@ def dashboard_overview(user: dict = Depends(get_current_user)):
                 "type": "云端" if is_cloud else "Mac 端",
                 "status": status,
                 "version": row.get("version") or "-",
-                "last_seen": _humanize_time_ago(last_seen),
+                "last_seen": last_seen_display,
                 "detail": detail,
             }
         )
