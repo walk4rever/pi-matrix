@@ -299,21 +299,57 @@ def dashboard_overview(user: dict = Depends(get_current_user)):
     ]
 
     run_logs: list[dict[str, Any]] = []
-    failure_keywords = ("fail", "error", "exception", "timeout", "失败", "错误", "超时")
-    for row in memory_events[:10]:
-        content = str(row.get("content") or "")
-        lower = content.lower()
-        failed = any(k in lower for k in failure_keywords)
-        run_logs.append(
-            {
-                "time": row.get("created_at"),
-                "task": _short_text(content or "执行事件"),
-                "status": "失败" if failed else "成功",
-                "reason": "检测到失败关键词" if failed else "执行记录",
-                "output": "-",
-                "retryable": failed,
-            }
+    try:
+        log_res = (
+            supabase.table("pi_matrix_execution_logs")
+            .select("created_at,request_text,status,error_code,error_message,response_preview,files_count")
+            .eq("user_id", user_id)
+            .order("created_at", desc=True)
+            .limit(30)
+            .execute()
         )
+        rows = log_res.data or []
+        for row in rows:
+            status_text = "成功" if str(row.get("status") or "success") == "success" else "失败"
+            reason = (
+                str(row.get("error_message") or row.get("error_code") or "").strip()
+                if status_text == "失败"
+                else "执行完成"
+            )
+            if not reason:
+                reason = "执行失败"
+            files_count = int(row.get("files_count") or 0)
+            output_text = f"{files_count} 个文件" if files_count > 0 else "-"
+            run_logs.append(
+                {
+                    "time": row.get("created_at"),
+                    "task": _short_text(str(row.get("request_text") or "执行任务")),
+                    "status": status_text,
+                    "reason": _short_text(reason, 80),
+                    "output": output_text,
+                    "retryable": status_text == "失败",
+                }
+            )
+    except Exception:
+        run_logs = []
+
+    if not run_logs:
+        # Backward-compatible fallback before execution log table is available.
+        failure_keywords = ("fail", "error", "exception", "timeout", "失败", "错误", "超时")
+        for row in memory_events[:10]:
+            content = str(row.get("content") or "")
+            lower = content.lower()
+            failed = any(k in lower for k in failure_keywords)
+            run_logs.append(
+                {
+                    "time": row.get("created_at"),
+                    "task": _short_text(content or "执行事件"),
+                    "status": "失败" if failed else "成功",
+                    "reason": "检测到失败关键词" if failed else "执行记录",
+                    "output": "-",
+                    "retryable": failed,
+                }
+            )
 
     return {
         "profile": {"email": user.get("email"), "user_id": user_id},

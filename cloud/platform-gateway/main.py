@@ -117,6 +117,7 @@ def _get_executor_endpoint(open_id: str) -> str | None:
 _ep_cache: dict[str, dict[str, Any]] = {}
 _drive_cache: dict[str, dict[str, Any]] = {}
 _user_tokens_cache: dict[str, dict[str, Any]] = {}
+_uid_cache: dict[str, dict[str, Any]] = {}
 
 
 # ------------------------------------------------------------------
@@ -260,6 +261,72 @@ def _get_user_tokens(open_id: str) -> dict[str, str]:
     except Exception:
         logger.exception("resolve user tokens failed open_id=%s", open_id)
         return {}
+
+
+def _get_user_id(open_id: str) -> str | None:
+    """Resolve open_id -> user_id with short-lived cache."""
+    now = datetime.now().timestamp()
+    cache_key = f"uid:{open_id}"
+    cached = _uid_cache.get(cache_key)
+    if cached and (now - cached["ts"]) < 30:
+        return str(cached["user_id"])
+
+    try:
+        from supabase import create_client
+
+        sb = create_client(settings.supabase_url, settings.supabase_service_key)
+        binding = (
+            sb.table("pi_matrix_feishu_bindings")
+            .select("user_id")
+            .eq("open_id", open_id)
+            .maybe_single()
+            .execute()
+        )
+        if not binding or not binding.data:
+            return None
+        user_id = str(binding.data.get("user_id") or "").strip()
+        if not user_id:
+            return None
+        _uid_cache[cache_key] = {"user_id": user_id, "ts": now}
+        return user_id
+    except Exception:
+        logger.exception("resolve user_id failed open_id=%s", open_id)
+        return None
+
+
+def _log_execution(
+    *,
+    open_id: str,
+    session_id: str,
+    request_text: str,
+    status: str,
+    error_code: str = "",
+    error_message: str = "",
+    response_text: str = "",
+    files_count: int = 0,
+) -> None:
+    user_id = _get_user_id(open_id)
+    if not user_id:
+        return
+    try:
+        from supabase import create_client
+
+        sb = create_client(settings.supabase_url, settings.supabase_service_key)
+        sb.table("pi_matrix_execution_logs").insert(
+            {
+                "user_id": user_id,
+                "open_id": open_id,
+                "session_id": session_id,
+                "request_text": (request_text or "")[:1000],
+                "status": status,
+                "error_code": error_code or None,
+                "error_message": (error_message or "")[:500] or None,
+                "response_preview": (response_text or "")[:1000],
+                "files_count": int(max(files_count, 0)),
+            }
+        ).execute()
+    except Exception:
+        logger.exception("write execution log failed open_id=%s", open_id)
 
 
 # ------------------------------------------------------------------
@@ -470,6 +537,9 @@ async def _on_message(event: MessageEvent) -> Optional[str]:
 
     response_text: str = ""
     files: list[dict[str, str]] = []
+    exec_status = "success"
+    error_code = ""
+    error_message = ""
     await _start_typing(chat_id)
     try:
         async with httpx.AsyncClient(timeout=settings.executor_timeout) as client:
@@ -491,20 +561,32 @@ async def _on_message(event: MessageEvent) -> Optional[str]:
     except httpx.TimeoutException:
         logger.error("executor timeout open_id=%s", open_id)
         response_text = "⏳ 处理超时，请稍后再试。"
+        exec_status = "failed"
+        error_code = "timeout"
+        error_message = "executor timeout"
         _metrics.executor_timeouts += 1
         _metrics.executor_errors += 1
     except httpx.ConnectError:
         logger.error("executor connect error open_id=%s", open_id)
         response_text = "🚀 您的智能助手正在启动，请几秒后重试。"
+        exec_status = "failed"
+        error_code = "connect_error"
+        error_message = "executor connect error"
         _metrics.executor_errors += 1
     except httpx.HTTPStatusError as e:
         status = e.response.status_code
         logger.error("executor HTTP %d open_id=%s", status, open_id)
         response_text = f"⚠️ 服务暂时不可用 (HTTP {status})，请稍后再试。"
+        exec_status = "failed"
+        error_code = f"http_{status}"
+        error_message = f"executor returned HTTP {status}"
         _metrics.executor_errors += 1
     except Exception as e:
         logger.error("executor error open_id=%s: %s", open_id, e)
         response_text = "❌ 处理消息时出错，请重试。"
+        exec_status = "failed"
+        error_code = "executor_error"
+        error_message = str(e)
         _metrics.executor_errors += 1
     finally:
         await _stop_typing(chat_id)
@@ -597,6 +679,18 @@ async def _on_message(event: MessageEvent) -> Optional[str]:
             await _delivery.send_drive_auth_card(open_id, name, auth_url)
         except Exception:
             logger.exception("send file failed open_id=%s", open_id)
+
+    # Persist run-level execution log for user dashboard visibility.
+    _log_execution(
+        open_id=open_id,
+        session_id=session_entry.session_id,
+        request_text=text,
+        status=exec_status,
+        error_code=error_code,
+        error_message=error_message,
+        response_text=response_text,
+        files_count=len(files),
+    )
 
     return None  # We already sent manually
 
