@@ -1,52 +1,93 @@
 # pi-matrix
 
-**Your personal iHermes employee, ready out of the box.**
+**Your AI employee. Yours forever.**
 
 [中文版](./README.zh.md)
 
-pi-matrix is an AI employee platform built on hermes-agent. It delivers a production-ready assistant experience through **Feishu (Lark)** with near-zero setup for end users.
+pi-matrix is an edge-cloud AI employee that gets smarter the more you use it. Chat through Feishu or WeChat — your AI remembers everything about you, and it all belongs to you.
 
 ---
 
-## Current Product Scope (v0.3.x)
+## Why pi-matrix
 
-- **Primary channel:** Feishu / Lark
-- **WeChat / WeCom:** planned, not the current default flow
-- **Runtime:** one isolated Hermes container per user (cloud SKU)
-- **Session continuity:** Hermes native session persistence enabled
+**It remembers you**
+Structured memory grows with every conversation. After 30 days, your AI knows your preferences, your projects, your work style. After 6 months, switching away means starting from zero.
+
+**It belongs to you**
+Your AI's memories, personality, and data are yours. Export them. Migrate them. Run offline. No other platform gives you this.
+
+**Zero setup**
+No terminal. No config files. No API keys. Unbox a Mac mini, connect WiFi, start talking. Or try free on cloud — no hardware needed.
 
 ---
 
-## Onboarding Flow (Current)
+## Two Ways to Start
+
+### Mac mini Edition — The Real Thing
+
+A pre-configured Mac mini delivered to your door. Your AI runs locally, data stays local. Cloud services provide LLM access, memory sync, and backup — like iCloud for your AI.
+
+- Your AI lives on your desk, not on someone else's server
+- Works offline (with graceful degradation)
+- One USB drive to take everything with you
+- Best for: privacy-conscious professionals (lawyers, doctors, executives)
+
+### Cloud Edition — Try It First
+
+No hardware needed. Full-featured experience in your browser. Free for 30 days.
+
+- Experience what "an AI that remembers you" feels like
+- All memories and personality transfer seamlessly to Mac mini
+- The hook isn't feature limits — it's memory retention
+
+Both editions feel identical: send a message in Feishu or WeChat, your AI responds instantly.
+
+---
+
+## How It Works
+
+```
+  Your Device                          Cloud Services
+  ───────────                          ──────────────
+
+  [Mac mini / Cloud Container]
+   AI Agent Runtime  ──── API ────→   LLM Gateway        (smart model routing)
+   Local Data        ──── sync ──→    Memory Service     (structured, searchable)
+   Full Home Dir     ──── backup ─→   Backup Service     (incremental, one-click restore)
+```
+
+No matter where the agent runs, it consumes the same cloud services. You don't care where your AI lives — you care that it knows you.
+
+---
+
+## Getting Started
 
 1. Open Feishu on mobile and scan the QR code
-2. Enter the iHermes chat and send any message
-3. Receive the registration card, complete signup, and click the email link to bind
-4. Start chatting directly in Feishu
-
-This keeps identity binding explicit (`open_id -> user`) and avoids fragmented signup paths.
+2. Send any message to start
+3. Complete registration to bind your account
+4. Start talking — your AI is ready
 
 ---
 
-## Two SKUs
+## What's Built
 
-### Mac mini Edition
-A pre-configured Mac mini shipped to users. Data stays on local hardware.
+- Feishu message routing + user identity binding
+- Per-user isolated agent containers with persistent storage
+- LLM Gateway with multi-model routing (LiteLLM)
+- Dashboard: device status, memory management, personality settings, execution logs
+- File delivery via Feishu Drive and Cloudflare R2
+- Session management with automatic compression
+- Personality injection (SOUL.md)
+- Structured memory sync to cloud database
 
-### Cloud Edition
-No hardware required. We host a dedicated cloud instance per user.
+## What's Coming
 
-Both SKUs are designed to feel the same from the user perspective: talk to iHermes in Feishu.
-
----
-
-## What’s Implemented
-
-- Feishu router + user binding flow
-- API / Gateway / Orchestrator service stack
-- Per-user agent container provisioning
-- Hermes native session persistence with per-user state volume
-- Tool progress messages in Feishu (e.g. terminal / execute_code / clarify)
+- Memory Service (mem0 + pgvector) — structured, searchable, growing memory
+- Backup Service — incremental sync, one-click device restore
+- Mac mini one-click installer + auto-start
+- WeChat channel support
+- Memory export (standard JSON format)
+- Pre-built personality templates
 
 ---
 

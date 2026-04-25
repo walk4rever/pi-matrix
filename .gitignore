@@ -6,8 +6,7 @@ node_modules/
 .DS_Store
 deploy/.env
 **/.env.vercel
-
-# Internal docs (not for public repo)
+# Internal docs
 PRODUCT.md
 
 # Build artifacts
