@@ -4,20 +4,23 @@
 
 [中文版](./README.zh.md)
 
-pi-matrix is an edge-cloud AI employee that gets smarter the more you use it. Chat through Feishu or WeChat — your AI remembers everything about you, and it all belongs to you.
+pi-matrix is an edge-cloud AI employee that gets smarter the more you use it. Your AI remembers everything about you, and it all belongs to you—**a private digital asset that grows over time.**
 
 ---
 
 ## Why pi-matrix
 
-**It remembers you**
-Structured memory grows with every conversation. After 30 days, your AI knows your preferences, your projects, your work style. After 6 months, switching away means starting from zero.
+**It remembers you (The Moat)**
+Structured memory grows with every conversation. Most AIs forget you every day; pi-matrix builds a growing graph of your preferences, projects, and work style. The more you use it, the more indispensable it becomes.
 
-**It belongs to you**
-Your AI's memories, personality, and data are yours. Export them. Migrate them. Run offline. No other platform gives you this.
+**It belongs to you (The Trust)**
+Your AI's memories, personality, and data are yours. Locked in your Mac mini, your data stays local. We don't train on your data. Export it, migrate it, or run it offline. You own the brain.
+
+**Industrial-grade Reliability**
+Stop gambling with AI hallucinations. We provide a curated, verified set of industrial-grade Skills. Whether it's deep Feishu automation or complex data analysis, you get consistent, predictable results—not just "suggestions."
 
 **Zero setup**
-No terminal. No config files. No API keys. Unbox a Mac mini, connect WiFi, start talking. Or try free on cloud — no hardware needed.
+No terminal. No config files. No API keys. Unbox a Mac mini, connect WiFi, start talking. Or try free on cloud—no hardware needed.
 
 ---
 
