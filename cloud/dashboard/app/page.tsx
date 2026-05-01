@@ -1,5 +1,6 @@
 import Link from "next/link";
 import FeishuQRCode from "@/components/FeishuQRCode";
+import PricingSection from "@/components/PricingSection";
 
 export default function HomePage() {
   return (
@@ -105,6 +106,9 @@ export default function HomePage() {
             </div>
           </div>
         </section>
+
+        {/* Pricing */}
+        <PricingSection />
 
         {/* Dark CTA */}
         <section className="dark-cta">
