@@ -20,6 +20,8 @@ services:
     container_name: pi-matrix-message
     build:
       context: ../cloud/message
+      args:
+        HERMES_REF: ${HERMES_VERSION:-v2026.4.30}
     restart: always
     env_file: .env
     depends_on:

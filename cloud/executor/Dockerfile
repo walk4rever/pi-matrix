@@ -1,4 +1,9 @@
+ARG HERMES_REF=v2026.4.30
+
 FROM python:3.12-slim
+
+ARG HERMES_REF
+ENV HERMES_REF=${HERMES_REF}
 
 # System deps + browser runtime prerequisites
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -7,7 +12,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     rm -rf /var/lib/apt/lists/*
 
 # Install Hermes + executor deps
-RUN git clone --depth=1 https://github.com/NousResearch/hermes-agent.git /opt/hermes && \
+RUN git clone --depth=1 --branch "${HERMES_REF}" https://github.com/NousResearch/hermes-agent.git /opt/hermes && \
     pip install --no-cache-dir -e "/opt/hermes[all]" \
     "fastapi>=0.111.0" \
     "uvicorn[standard]>=0.29.0"

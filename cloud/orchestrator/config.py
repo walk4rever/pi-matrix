@@ -5,7 +5,8 @@ class Settings(BaseSettings):
     supabase_url: str
     supabase_service_key: str
 
-    executor_image: str = "pi-matrix/executor:latest"
+    hermes_version: str = "v2026.4.30"
+    executor_image: str = "pi-matrix/executor:hermes-v2026.4.30"
     gateway_url: str = "http://gateway:4000/v1"
     gateway_key: str                # litellm master key
     platform_gateway_url: str = "http://message:8000"
@@ -18,6 +19,9 @@ class Settings(BaseSettings):
     # Optional platform-level web tool keys forwarded to executor containers.
     tavily_api_key: str = ""
     executor_port: int = 8080
+    docker_pull_on_upgrade: bool = True
+    executor_upgrade_backup_dir: str = "/var/backups/pi-matrix/hermes"
+    executor_upgrade_smoke_timeout: float = 45.0
 
     class Config:
         env_file = ".env"
