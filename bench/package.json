@@ -1,0 +1,11 @@
+{
+  "name": "token-econ-bench",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "bench": "node runner/run.mjs"
+  },
+  "dependencies": {
+    "yaml": "^2.5.0"
+  }
+}

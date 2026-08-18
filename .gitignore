@@ -14,3 +14,7 @@ PRODUCT.md
 # Build artifacts
 **/.next/
 **/*.tsbuildinfo
+
+# Bench run outputs
+bench/reports/*/
+!bench/reports/.gitkeep

@@ -6,7 +6,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 pi-matrix is an edge-cloud "AI employee" platform. Users talk to their agent through Feishu; the agent runtime is [hermes-agent](https://github.com/NousResearch/hermes-agent) (a pinned dependency, **never forked or patched here**) running either in a per-user cloud container or on a user's Mac mini. This repo contains the platform around Hermes: message ingestion, session management, container orchestration, LLM gateway config, the user dashboard, and deployment scripts.
 
-`PRODUCT.md` (gitignored, internal) holds product positioning, pricing, roadmap, and the fuller architecture narrative. `CLAUDE-DESIGN.md` is the Claude/Anthropic-inspired design system the Next.js dashboard follows (warm parchment palette, serif headlines, terracotta `#c96442` accent) — read it before touching dashboard UI.
+**The project keeps exactly three docs — `README.md`, `PRODUCT.md`, `TODO.md`. Do not create others.** `PRODUCT.md` (gitignored, internal) is the design-of-record: positioning, pricing, architecture, and design decisions. `TODO.md` is the active work queue — unfinished items only, P0–P3; when something ships, its conclusion is written back into `PRODUCT.md` and removed from here. `CLAUDE-DESIGN.md` is a pre-existing design system reference for the dashboard UI (warm parchment palette, serif headlines, terracotta `#c96442` accent) — read it before touching dashboard UI.
+
+Two product lines run in parallel. The **Hermes line** (`cloud/message`, `cloud/executor`, Feishu channel) is described below and is currently **frozen** — do not change its contracts. The **pi line** (cloud instances of pi-coding-agent driven from web/desktop, with per-instance sandboxing and TokenEconBench measurement) is designed but not implemented; see `PRODUCT.md` § "pi Track" before starting any work under `cloud/pi/` or `bench/`.
 
 ## Commands
 

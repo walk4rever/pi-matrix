@@ -1,0 +1,45 @@
+id: ts-ticker-format-01
+category: coding
+title: Reject malformed ticker symbols at a data-import boundary
+
+prompt: |
+  A financial-data import pipeline stores stock ticker symbols coming from an
+  upstream data provider. The upstream resolver occasionally returns malformed
+  values — e.g. a valid ticker with garbage characters appended, such as
+  "ANETXXXX" instead of "ANET" — and these are currently written through
+  without any validation.
+
+  Add a new exported function `isValidTickerFormat(ticker: string): boolean`
+  to `src/lib/ticker.ts` that returns `true` only for well-formed ticker
+  symbols in the three formats this system actually stores, and `false` for
+  anything else:
+
+  1. US common/preferred stock symbols (1-5 uppercase letters, optionally
+     followed by a class/preferred suffix like `-B` or `-PM`)
+  2. Hong Kong exchange codes (a 3-5 digit numeric code followed by `.HK`)
+  3. China A-share codes (a 6-digit numeric code followed by `.SS` or `.SZ`)
+
+  Do not modify the existing `normalizeTicker` function or `TICKER_ALIASES`;
+  both must continue to behave exactly as before.
+
+oracle:
+  type: test
+  confidence: high
+  test_command: "npm test"
+  held_out_paths:
+    - tests/ticker.test.ts
+
+fixture:
+  entry_files:
+    - src/lib/ticker.ts
+
+provenance:
+  source: >
+    Adapted from a real production bugfix in a financial data pipeline
+    (a stock ticker validation gap at a database-write boundary).
+  resynthesized: true
+
+metadata:
+  language: typescript
+  difficulty: low
+  est_human_time_minutes: 20
