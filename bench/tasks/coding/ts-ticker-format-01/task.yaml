@@ -22,6 +22,11 @@ prompt: |
   Do not modify the existing `normalizeTicker` function or `TICKER_ALIASES`;
   both must continue to behave exactly as before.
 
+capabilities:
+  - validate-untrusted-input-at-boundary   # 识别数据边界处的异常输入
+  - derive-rules-from-written-spec         # 从书面规格推导校验逻辑
+  - localized-change-without-regression    # 局部修改且不破坏既有行为
+
 oracle:
   type: test
   confidence: high
@@ -37,6 +42,9 @@ provenance:
   source: >
     Adapted from a real production bugfix in a financial data pipeline
     (a stock ticker validation gap at a database-write boundary).
+  workflow: >
+    Financial data ingestion — the validation step before an upstream
+    resolver's output is written to the database.
   resynthesized: true
 
 metadata:

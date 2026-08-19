@@ -1,0 +1,49 @@
+id: yt-podcast-zh-translation-01
+category: daily-ops
+title: 将一期英文播客/访谈视频翻译为高质量中文全文（md 输出）
+
+prompt: |
+  给定一个 YouTube 视频 URL（通常是英文播客或访谈），完成以下工作：
+
+  1. 获取该视频的完整文字内容（字幕/转录）。如果官方字幕不可用或不完整，需要
+     通过其他可行方式获取可用的文字内容。
+  2. 将全文翻译为高质量中文，要求：
+     - 忠实原意：不遗漏、不概括、不因为篇幅长而在中途退化为摘要
+     - 流畅自然：符合中文表达习惯，不是逐字直译的翻译腔
+     - 术语一致：人名、机构名、专业术语在全文中译法统一
+     - 保留结构：如原始内容标注了说话人，译文中保留说话人区分
+  3. 将最终译文写成一个 Markdown 文件，路径为 `output/translation.md`，包含：
+     - 标题（视频标题的中文翻译，括号附英文原标题）
+     - 来源 URL
+     - 正文译文，按段落/说话人分段
+
+  视频 URL：{{TBD — 首次实际采集时填入真实 episode}}
+
+capabilities:
+  - retrieve-external-media-transcript            # 从外部媒体源（视频/音频）获取文字内容
+  - long-form-translation-en-to-zh                 # 英译中长文翻译，保结构保术语
+  - preserve-completeness-under-length-pressure    # 长文本不因篇幅压力而丢内容/转摘要
+  - format-as-publication-ready-markdown           # 整理为可发布的 markdown 格式
+
+oracle:
+  type: llm_judge
+  confidence: low
+  rubric_path: oracle/rubric.md
+  judge_runs: 3
+
+fixture:
+  entry_files: []   # 无起始文件——agent 需自行联网抓取外部内容，见 README「外部内容依赖型任务」
+
+provenance:
+  source: >
+    Adapted from a recurring personal workflow: translating an English-language
+    podcast/interview video into Chinese for personal reading.
+  workflow: >
+    Content consumption — converting long-form English audio/video content into
+    a Chinese-readable reference document.
+  resynthesized: false   # 无私有/机密信息需要脱敏；第三方版权素材的处理方式见 README
+
+metadata:
+  language: prose
+  difficulty: medium
+  est_human_time_minutes: 180   # 人工听译一期播客量级的粗估，采集时按实际节目时长修正
