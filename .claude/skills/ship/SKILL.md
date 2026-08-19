@@ -1,6 +1,6 @@
 ---
 name: ship
-description: Ship a pi-matrix release — reflect this session's decisions into PRODUCT.md/TODO.md/README.md, run the project's lint & build checklist, bump the minor version tag, and push everything (commits + tag) to origin. Use when the user says "ship", "ship it", "发个版本", "推送更新", or explicitly invokes /ship.
+description: Ship a pi-matrix release — reflect this session's decisions into PRODUCT.md/TODO.md/README.md, run the project's lint & build checklist, bump the patch version tag, and push everything (commits + tag) to origin. Use when the user says "ship", "ship it", "发个版本", "推送更新", or explicitly invokes /ship.
 ---
 
 # Ship
@@ -77,13 +77,14 @@ trivial and obviously in-scope.
 
 ### Step 4 — Bump the tag
 
-`/ship` always bumps the **minor** version and resets patch to 0 — that's the
-"小版本" the user asked for. If a mid-cycle patch-only bump is ever wanted, that's
-a different, explicit ask, not the default here.
+`/ship` always bumps the **patch** version by +0.0.1 — that's the "小版本" the user
+asked for (MAJOR.MINOR.PATCH, last digit). If a minor or major bump is ever wanted,
+that's a different, explicit ask (the user states the target version directly), not
+the default here.
 
 ```bash
 LATEST=$(git tag --sort=-v:refname | head -1)   # e.g. v0.9.0
-# bump middle number, zero the patch: v0.9.0 -> v0.10.0
+# bump last number only: v0.9.0 -> v0.9.1
 ```
 
 If `cloud/dashboard/` had any file changed in this ship, also bump
@@ -95,14 +96,14 @@ meaningless (this is why v0.9.0 didn't touch it — no dashboard code changed th
 Tag as annotated, not lightweight:
 
 ```bash
-git tag -a vX.Y.0 -m "Release vX.Y.0"
+git tag -a vX.Y.Z -m "Release vX.Y.Z"
 ```
 
 ### Step 5 — Push
 
 ```bash
 git push origin main
-git push origin vX.Y.0
+git push origin vX.Y.Z
 ```
 
 ### Step 6 — Report
@@ -117,7 +118,11 @@ don't pad the report.
   changes. If `git status` shows something unexpected (files you don't recognize,
   a change that doesn't match anything discussed this session), stop and ask
   before staging it — same rule as any other git operation.
-- Minor-only bump policy is deliberate and specific to how this project has been
-  versioning so far (v0.8.1 -> v0.8.2 was a patch, done manually outside this
-  skill; v0.8.2 -> v0.9.0 was the first minor ship). If that policy ever needs to
-  change, update this file — don't just start improvising a different scheme.
+- Patch-only bump policy is the default; a minor/major bump only happens when the
+  user gives an explicit target version (e.g. v0.8.2 -> v0.9.0 was a direct
+  instruction, not something `/ship` derived on its own — the skill's default is
+  always patch, never minor/major). If that policy ever needs to change, update
+  this file — don't just start improvising a different scheme.
+- **Correction history**: the first real run of this skill (2026-08-19) mis-tagged
+  v0.9.0 -> v0.10.0 as a minor bump. Corrected same-day: v0.10.0 deleted (local +
+  remote), re-tagged as v0.9.1 on the same commit, this file fixed to patch-only.
