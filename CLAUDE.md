@@ -12,6 +12,10 @@ Two product lines run in parallel. The **Hermes line** (`cloud/message`, `cloud/
 
 ## Commands
 
+**Releasing**: use the `ship` skill (`.claude/skills/ship/SKILL.md`) — it reflects this
+session's decisions into the three docs, runs the checklist below, bumps the minor
+version tag, and pushes. Don't do these steps manually unless the skill itself is broken.
+
 Backend (run from `deploy/`, requires `deploy/.env` — see `.env.example`):
 
 ```bash
