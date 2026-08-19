@@ -8,8 +8,6 @@ deploy/.env
 deploy/.env.bak-*
 backups/
 **/.env.vercel
-# Internal docs
-PRODUCT.md
 
 # Build artifacts
 **/.next/
